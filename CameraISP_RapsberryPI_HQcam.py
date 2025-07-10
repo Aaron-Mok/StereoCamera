@@ -25,6 +25,13 @@ def show_histogram(image, title, pos):
         cv2.line(hist_img, (x, 200), (x, 200 - int(hist[x])), (255, 255, 255))
     cv2.imshow(title, hist_img)
 
+# Finding the black offset from optical black pixels. Using optically black regions on the sensor.
+raw = picam2.capture_array("raw").astype(np.float32)
+black_rows = np.concatenate((raw[:12, :], raw[-12:, :]), axis=0)
+black_cols = np.concatenate((raw[:, :8], raw[:, -8:]), axis=1)
+black_mask = np.concatenate((black_rows.flatten(), black_cols.flatten()))
+black_level = np.mean(black_mask)
+
 while True:
     # Get raw Bayer image (10-bit)
     raw = picam2.capture_array("raw")  # shape is HxW, single channel
@@ -33,9 +40,6 @@ while True:
     # Convert 10-bit to 8-bit for display
     raw_8bit = np.clip(raw / 4, 0, 255).astype(np.uint8)
 
-    # Simulate black level subtraction
-    black_level = 64  # Common for 10-bit sensors, verify for your sensor
-    # TODO: use the histogram instead. find the mean of the image and then subtract it. When the camera cover is on.
     corrected = np.clip(raw - black_level, 0, 1023)
     corrected_8bit = (corrected / 4).astype(np.uint8)
 
