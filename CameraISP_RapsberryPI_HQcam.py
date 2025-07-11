@@ -1,12 +1,6 @@
 from picamera2 import Picamera2
-import rawpy
-import imageio
 import cv2
 import numpy as np
-
-import cv2
-import numpy as np
-from picamera2 import Picamera2
 import matplotlib.pyplot as plt
 
 # Start camera with raw output (10-bit Bayer)
@@ -49,7 +43,8 @@ while True:
 
     # Show live images side by side
     combined = np.hstack((bgr_before, bgr_after))
-    cv2.imshow("Before (Left) vs After Black Level Subtraction (Right)", combined)
+    cv2.imshow("test", bgr_after)
+    # cv2.imshow("Before (Left) vs After Black Level Subtraction (Right)", combined)
 
     # Show histogram for one channel (e.g., grayscale view)
     gray_before = cv2.cvtColor(bgr_before, cv2.COLOR_BGR2GRAY)
