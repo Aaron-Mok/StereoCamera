@@ -1,7 +1,7 @@
 from picamera2 import Picamera2
 import cv2
 
-picam2 = Picamera2()
+picam2 = Picamera2(1)
 # config = picam2.create_preview_configuration(main={"format": "RGB888"})
 config = picam2.create_preview_configuration(main={"format": "RGB888", "size": (640, 480)}) 
 picam2.configure(config)
