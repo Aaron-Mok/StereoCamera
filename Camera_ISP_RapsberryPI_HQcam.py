@@ -62,6 +62,9 @@ while True:
     # Demosaic
     rgb_image = cv2.cvtColor(lens_shade_corrected_float_8bit, cv2.COLOR_BAYER_BGGR2BGR) # This is BIlinear. There are three options: Bilinear, Edge Aware, and Variable Number of Gradients
 
+    # White Balance
+    rgb_image_awb = gray_world_awb(rgb_image)
+
     # Gamma correction
     gamma = 2.2
     norm = rgb_image.astype(np.float32) / 255.0
