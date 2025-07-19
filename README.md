@@ -55,4 +55,4 @@ I am an Imaging System Architect at KLA, where I lead the development of advance
 🔗 See my work and blog at [https://aaron-mok.github.io/](https://aaron-mok.github.io/).
 
 ## License
-MIT License
+This project is licensed under the **GNU General Public License v3.0**. 
