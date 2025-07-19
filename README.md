@@ -2,13 +2,13 @@
 
 **Author:** Aaron Mok  
 **Status:** 🚧 Ongoing Project  
-**Keywords:** Stereo Vision, Raspberry Pi HQ Camera, Depth Estimation, ISP Pipeline, Distortion Correction, Python, OpenCV, 3D Printing
+**Keywords:** Optics, Stereo Vision, Raspberry Pi HQ Camera, Depth Estimation, ISP Pipeline, Distortion Correction, Python, OpenCV, 3D Printing, CADing
 
 ## Overview
 
 This project aims to build a complete **stereo camera system from scratch** using two Raspberry Pi HQ cameras. The system captures synchronized raw Bayer images, processes them through a custom image signal processing (ISP) pipeline, and performs stereo calibration and depth estimation. It also includes the design and fabrication of a **custom 3D-printed mount** to ensure precise camera alignment.
 
-The project emphasizes **understanding and implementing each step** of the stereo vision pipeline, including distortion correction, to enable accurate and consistent depth reconstruction.
+This project showcases the complete stereo vision pipeline, from lens and sensor selection to camera alignment and image processing, with the goal of achieving accurate and reliable depth reconstruction.
 
 ## Features
 
@@ -16,8 +16,8 @@ The project emphasizes **understanding and implementing each step** of the stere
 - 🧰 **Custom ISP Pipeline** including:
   - Stride/padding correction
   - Black level subtraction
-  - Lens shading correction
   - Distortion correction
+  - Lens shading correction
   - Demosaicing
   - White balance
   - Color calibration
@@ -36,8 +36,8 @@ Modern stereo vision systems often hide their internal processes. This project a
 - [x] Image signal processing for raw capture
   - [x] Stride/padding correction
   - [ ] Black level subtraction
-  - [x] Lens shading correction
-  - [x] Distortion correction
+  - [ ] Distortion correction
+  - [ ] Lens shading correction
   - [x] Demosaicing
   - [x] White balance
   - [ ] Color calibration
@@ -50,7 +50,9 @@ Modern stereo vision systems often hide their internal processes. This project a
 Coming soon: live video walkthrough, depth map overlay, and stereo reconstruction results.
 
 ## About Me
-I am an imaging system architect at KLA with a PhD from Cornell University.
+I am an Imaging System Architect at KLA, where I lead the development of advanced optical and imaging subsystems for high-precision inspection tools. I hold a PhD in Biomedical Engineering from Cornell University, where my research focused on developing next-generation optical imaging systems for deep-tissue brain imaging.
+
+🔗 See my work and blog at [https://aaron-mok.github.io/](https://aaron-mok.github.io/).
 
 ## License
 MIT License
