@@ -34,18 +34,17 @@ Modern stereo vision systems often hide their internal processes. This project a
 
 ## Current Progress
 - [x] Image signal processing for raw capture
-  - [ ] Stride/padding correction
-  - Black level subtraction
-  - Lens shading correction
-  - Distortion correction
-  - Demosaicing
-  - White balance
-  - Color calibration
-  - Gamma correction
+  - [x] Stride/padding correction
+  - [ ] Black level subtraction
+  - [x] Lens shading correction
+  - [x] Distortion correction
+  - [x] Demosaicing
+  - [x] White balance
+  - [ ] Color calibration
+  - [x] Gamma correction
+- [ ] 3D-printed mount design and testing
 - [ ] Initial stereo calibration
 - [ ] Real-time disparity map viewer
-- [ ] 3D-printed mount design and testing
-- [ ] Benchmarking under different lighting conditions
 
 ## Demo
 Coming soon: live video walkthrough, depth map overlay, and stereo reconstruction results.
