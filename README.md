@@ -1,4 +1,4 @@
-# Stereo Camera System from Scratch
+# Stereo Camera System
 
 **Author:** Aaron Mok  
 **Status:** 🚧 Ongoing Project  
