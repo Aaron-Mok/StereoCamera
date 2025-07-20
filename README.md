@@ -1,7 +1,6 @@
-# Stereo Camera System from Scratch
+# Stereo Camera System
 
 **Author:** Aaron Mok  
-**Status:** 🚧 Ongoing Project  
 **Keywords:** Optics, Stereo Vision, Raspberry Pi HQ Camera, Depth Estimation, ISP Pipeline, Distortion Correction, Python, OpenCV, 3D Printing, CADing
 
 ## Overview
@@ -12,8 +11,8 @@ This project showcases the complete stereo vision pipeline, from lens and sensor
 
 ## Features
 
-- 📷 **Raw Image Capture** from dual Raspberry Pi HQ cameras  
-- 🧰 **Custom ISP Pipeline** including:
+- **Raw Image Capture** from dual Raspberry Pi HQ cameras  
+- **Custom ISP Pipeline** including:
   - Stride/padding correction
   - Black level subtraction
   - Distortion correction
@@ -22,17 +21,18 @@ This project showcases the complete stereo vision pipeline, from lens and sensor
   - White balance
   - Color calibration
   - Gamma correction
-- 🔧 **Stereo Calibration & Rectification**
-- 🌄 **Disparity & Depth Map Generation**
-- 🖨️ **Custom 3D-Printed Mount** for accurate and stable stereo alignment
-- 🧪 Real-time visualization and debugging tools
-- 📦 Modular and extensible Python codebase
+- **Stereo Calibration & Rectification**
+- **Disparity & Depth Map Generation**
+- **Custom 3D-Printed Mount** for accurate and stable stereo alignment
+- Real-time visualization and debugging tools
+- Modular and extensible Python codebase
 
 ## Motivation
 
 Modern stereo vision systems often hide their internal processes. This project aims to **demystify** the full imaging and stereo pipeline—bridging camera hardware, optics, and software—from first principles. It serves both as a learning platform and as a foundation for future computer vision or robotics applications.
 
 ## Current Progress
+**Status:** Ongoing Project  
 - [x] Image signal processing for raw capture
   - [x] Stride/padding correction
   - [ ] Black level subtraction
@@ -52,7 +52,7 @@ Coming soon: live video walkthrough, depth map overlay, and stereo reconstructio
 ## About Me
 I am an Imaging System Architect at KLA, where I lead the development of advanced optical and imaging subsystems for high-precision inspection tools. I hold a PhD in Biomedical Engineering from Cornell University, where my research focused on developing next-generation optical imaging systems for deep-tissue brain imaging.
 
-🔗 See my work and blog at [https://aaron-mok.github.io/](https://aaron-mok.github.io/).
+See my work and blog at [https://aaron-mok.github.io/](https://aaron-mok.github.io/).
 
 ## License
 This project is licensed under the **GNU General Public License v3.0**. 
