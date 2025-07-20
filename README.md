@@ -1,7 +1,6 @@
 # Stereo Camera System
 
 **Author:** Aaron Mok  
-**Status:** 🚧 Ongoing Project  
 **Keywords:** Optics, Stereo Vision, Raspberry Pi HQ Camera, Depth Estimation, ISP Pipeline, Distortion Correction, Python, OpenCV, 3D Printing, CADing
 
 ## Overview
@@ -33,6 +32,7 @@ This project showcases the complete stereo vision pipeline, from lens and sensor
 Modern stereo vision systems often hide their internal processes. This project aims to **demystify** the full imaging and stereo pipeline—bridging camera hardware, optics, and software—from first principles. It serves both as a learning platform and as a foundation for future computer vision or robotics applications.
 
 ## Current Progress
+**Status:** 🚧 Ongoing Project  
 - [x] Image signal processing for raw capture
   - [x] Stride/padding correction
   - [ ] Black level subtraction
