@@ -5,31 +5,15 @@ from ISP import *
 from camera_utils import *
 
 # Initialize camera
-picam2 = Picamera2(0)
-config = picam2.create_preview_configuration(raw={'format': 'SBGGR12', 'size': (2028, 1520)})
-picam2.configure(config)
-print("Camera configuration:")
-print(picam2.camera_configuration())
-img_width_px, image_height_px = picam2.camera_configuration()['sensor']['output_size']
-picam2.start()
-
+cam_obj, output_im_size_px = initialize_camera(camera_id = 0, image_size_px = (2028, 1520))
 
 while True:
-    raw = picam2.capture_array("raw")
-    # controls = {
-    # "AnalogueGain": 1.0,
-    # "ExposureTime": 60000  # in microseconds
-    # }
-    # picam2.set_controls(controls)
-
-    metadata = picam2.capture_metadata()
-    print("Analogue Gain:", metadata["AnalogueGain"])
-    print("Digital Gain:", metadata["DigitalGain"])
-    print("Exposure Time (µs):", metadata["ExposureTime"])
-
-    # cv2.imshow("Raw Image", raw)
+    # Capture raw image form camera
+    raw = capture_raw_image(cam_obj)
 
     # Stride/padding correction
+    raw_unstrided =  unstride_padding(raw)
+
     raw = raw[:, 1::2]
     raw_float = raw[:,:img_width_px-1]
     raw_8bit = raw_float.astype(np.uint8)
