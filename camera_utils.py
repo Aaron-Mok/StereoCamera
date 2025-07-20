@@ -55,7 +55,7 @@ def capture_raw_image(picam2):
         picam2 (Picamera2): The initialized camera object.
 
     Returns:
-        np.ndarray: Raw Bayer image as a NumPy array.
+        Raw Bayer image as a array.
     """
     raw = picam2.capture_array("raw")
     metadata = picam2.capture_metadata()
