@@ -11,8 +11,8 @@ This project showcases the complete stereo vision pipeline, from lens and sensor
 
 ## Features
 
-- 📷 **Raw Image Capture** from dual Raspberry Pi HQ cameras  
-- 🧰 **Custom ISP Pipeline** including:
+- **Raw Image Capture** from dual Raspberry Pi HQ cameras  
+- **Custom ISP Pipeline** including:
   - Stride/padding correction
   - Black level subtraction
   - Distortion correction
@@ -21,11 +21,11 @@ This project showcases the complete stereo vision pipeline, from lens and sensor
   - White balance
   - Color calibration
   - Gamma correction
-- 🔧 **Stereo Calibration & Rectification**
-- 🌄 **Disparity & Depth Map Generation**
-- 🖨️ **Custom 3D-Printed Mount** for accurate and stable stereo alignment
-- 🧪 Real-time visualization and debugging tools
-- 📦 Modular and extensible Python codebase
+- **Stereo Calibration & Rectification**
+- **Disparity & Depth Map Generation**
+- **Custom 3D-Printed Mount** for accurate and stable stereo alignment
+- Real-time visualization and debugging tools
+- Modular and extensible Python codebase
 
 ## Motivation
 
