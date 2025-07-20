@@ -32,7 +32,7 @@ This project showcases the complete stereo vision pipeline, from lens and sensor
 Modern stereo vision systems often hide their internal processes. This project aims to **demystify** the full imaging and stereo pipeline—bridging camera hardware, optics, and software—from first principles. It serves both as a learning platform and as a foundation for future computer vision or robotics applications.
 
 ## Current Progress
-**Status:** 🚧 Ongoing Project  
+**Status:** Ongoing Project  
 - [x] Image signal processing for raw capture
   - [x] Stride/padding correction
   - [ ] Black level subtraction
@@ -52,7 +52,7 @@ Coming soon: live video walkthrough, depth map overlay, and stereo reconstructio
 ## About Me
 I am an Imaging System Architect at KLA, where I lead the development of advanced optical and imaging subsystems for high-precision inspection tools. I hold a PhD in Biomedical Engineering from Cornell University, where my research focused on developing next-generation optical imaging systems for deep-tissue brain imaging.
 
-🔗 See my work and blog at [https://aaron-mok.github.io/](https://aaron-mok.github.io/).
+See my work and blog at [https://aaron-mok.github.io/](https://aaron-mok.github.io/).
 
 ## License
 This project is licensed under the **GNU General Public License v3.0**. 
