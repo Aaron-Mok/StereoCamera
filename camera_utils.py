@@ -1,5 +1,5 @@
 from picamera2 import Picamera2
-
+import numpy as np
 
 def initialize_camera(camera_id, image_size):
     """
@@ -63,3 +63,18 @@ def capture_raw_image(picam2):
     print("Digital Gain:", metadata["DigitalGain"])
     print("Exposure Time (µs):", metadata["ExposureTime"])
     return raw
+
+def normalize01_to_8bit(img_normalized):
+    """
+    Convert an image with values in [0, 1] (normalized float32/float64)
+    to 8-bit (uint8) format.
+    """
+    img_8bit = np.clip(img_normalized * 255.0, 0, 255).astype(np.uint8)
+    return img_8bit
+
+def bit8_to_normalize01(img_8bit):
+    """
+    Convert an 8-bit (uint8) image to float32 format with values normalized to [0, 1].
+    """
+    img_normalized = img_8bit.astype(np.float32) / 255.0
+    return img_normalized

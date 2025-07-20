@@ -17,8 +17,7 @@ def correct_stride_padding(raw, img_width_px):
     # Remove interleaved padding (e.g., every other column)
     raw = raw[:, 1::2]
 
-    # Trim to exact width if needed
-    if raw.shape[1] > img_width_px:
-        raw = raw[:, :img_width_px]
+    # Trim to exact width
+    raw = raw[:, :img_width_px-1]
 
     return raw
