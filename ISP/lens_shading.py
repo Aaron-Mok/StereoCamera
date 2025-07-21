@@ -19,10 +19,10 @@ def get_correction_map(flat_field_image_dir, show_map):
         correction_map_8bit = (correction_map*255).astype(np.uint8)
         levels = [150, 200, 250]
 
-
         for level in levels:
             ret, thresh = cv2.threshold(correction_map_8bit, level, 255, cv2.THRESH_BINARY)
             contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             cv2.drawContours(correction_map_8bit, contours, -1, color=0, thickness=1)  # black contours (0)
+            cv2.imshow("Correction map", correction_map_8bit)
 
     return correction_map

@@ -2,20 +2,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 from picamera2 import Picamera2
 import time
+import cv2
 
-picam2 = Picamera2()
-config = picam2.create_preview_configuration(raw={'format': 'SBGGR12', 'size': (2028, 1520)})
-picam2.configure(config)
-picam2.start()
+import os
+import sys
 
-# Wait for camera to warm up
-time.sleep(2)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
 
-# Fixed exposure (you can adjust if needed)
-exposure_time = 1000  # in microseconds
+from ISP import *
+from camera_utils import *
+
+def exp_saturation(x, a, b, c):
+    return a * (1 - np.exp(-b * x)) + c
+
+# Initialize camera
+cam_obj, output_im_size_px = initialize_camera(camera_id = 0, image_size = (2028, 1520))
 
 # Gain sweep values (in analog gain units)
-gain_values = np.linspace(1.0, 20.0, 100)  # adjust upper limit as needed
+gain_values = np.linspace(1.0, 8.0, 30) 
 
 # Prompt user to cover the lens
 input("Please cover the camera lens completely, then press ENTER to begin...")
@@ -23,26 +29,14 @@ input("Please cover the camera lens completely, then press ENTER to begin...")
 black_offsets = []
 
 for gain in gain_values:
-    picam2.set_controls({
-        "ExposureTime": exposure_time,
-        "AnalogueGain": gain
-    })
-    metadata = picam2.capture_metadata()
-    time.sleep(0.5)  # wait for settings to apply
-
-    # Capture dark frame
-    raw = picam2.capture_array("raw")
-
-    # Option 1: whole-frame average (assuming lens is covered)
-    black_level = np.mean(raw)
-
-    # Option 2 (if you want optically black pixels only):
-    # black_level = np.mean(raw[:, :32])  # leftmost 32 columns
-
+    set_camera_controls(cam_obj, gain=gain, exposure=1000)  # 1 ms exposure time
+    time.sleep(0.5)  # Allow time for settings to take effect
+    raw_8bit = capture_raw_image(cam_obj)
+    raw_unstrided_8bit =  correct_stride_padding(raw_8bit, img_width_px=output_im_size_px[0])
+    # cv2.imshow("Raw Image", raw_unstrided_8bit)
+    # cv2.waitKey(1)
+    black_level = np.mean(raw_unstrided_8bit)
     black_offsets.append(black_level)
-    print(f"Gain: {gain:.1f}, Black Level: {black_level:.2f}, Digital Gain: {metadata['DigitalGain']:.2f}")
-
-picam2.stop()
 
 # Plotting
 plt.figure()
@@ -54,3 +48,4 @@ plt.title("Black Offset vs. Analog Gain")
 plt.grid(True)
 plt.legend()
 plt.show()
+# cv2.destroyAllWindows()

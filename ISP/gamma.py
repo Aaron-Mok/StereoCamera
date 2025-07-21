@@ -14,3 +14,13 @@ def apply_gamma_correction(image, gamma=2.2):
     # Avoid modifying original image
     corrected = np.power(np.clip(image, 0, 1), 1.0 / gamma)
     return corrected
+
+def apply_sRGB_gamma_encoding(image):
+    a = 0.055
+    threshold = 0.0031308
+    srgb = np.where(
+        image <= threshold,
+        12.92 * image,
+        (1 + a) * np.power(image, 1/2.4) - a
+    )
+    return np.clip(srgb, 0, 1)
