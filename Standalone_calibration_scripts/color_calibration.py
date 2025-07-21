@@ -9,7 +9,7 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 
 from ISP import *
-from camera_utils import *
+from conversion_utils import *
 
 def white_balance_to_gray_patch(img_rgb_f01, measured_patch_rgb_f01, reference_patch_rgb_f01):
     """
@@ -35,7 +35,7 @@ clicked_points = []
 img_bgr = cv2.imread("./captures/SpyderCHECKR_linear_rgb_before_wb.png")
 
 # Resize for display
-screen_width = 1280  # adjust as needed
+screen_width = 1024  # adjust as needed
 scale = screen_width / img_bgr.shape[1]
 display = cv2.resize(img_bgr.copy(), None, fx=scale, fy=scale)
 
@@ -120,7 +120,7 @@ ground_truth_srgb_f01 = np.array([
 
 ground_truth_linear_rgb_f01 = srgb_to_linear(ground_truth_srgb_f01)
 
-gray_patch_index = 20  # Patch #21
+gray_patch_index = 22  # Patch #22 is the cloest to gray neutral
 measured_gray_rgb_f01 = measured_rgbs[gray_patch_index]
 ground_truth_gray_rgb_f01 = ground_truth_linear_rgb_f01[gray_patch_index]
 
@@ -128,11 +128,21 @@ img_rgb_f01 = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.
 img_rgb_wb_f01 = white_balance_to_gray_patch(img_rgb_f01, measured_gray_rgb_f01, ground_truth_gray_rgb_f01)
 
 img_rgb_wb_u8 = normalize01_to_8bit(img_rgb_wb_f01)
-cv2.imshow("White Balanced Image", cv2.cvtColor(img_rgb_wb_u8, cv2.COLOR_RGB2BGR))
 
+scale = screen_width / img_rgb_wb_u8.shape[1]
+display = cv2.resize(img_rgb_wb_u8.copy(), None, fx=scale, fy=scale)
+
+img = cv2.cvtColor(display, cv2.COLOR_RGB2BGR)
+def show_pixel_values(event, x, y, flags, param):
+    if event == cv2.EVENT_MOUSEMOVE:
+        bgr = img[y, x]
+        print(f"RGB at ({x},{y}): {bgr[::-1]}")  # Convert BGR → RGB
+
+cv2.namedWindow("White Balanced Image", cv2.WINDOW_NORMAL)
+cv2.setMouseCallback("White Balanced Image", show_pixel_values)
+cv2.imshow("White Balanced Image", img)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
-
 
 
 # --- Step 4: Solve for 3x3 Color Correction Matrix ---
