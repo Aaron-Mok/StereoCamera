@@ -36,3 +36,29 @@ def srgb_d65_to_srgb_d50(rgb_srgb_d65):
     rgb_srgb_d50 = colour.XYZ_to_sRGB(xyz_d50)
     
     return rgb_srgb_d50
+
+def srgb_to_linear(srgb_f01):
+    """Convert sRGB (0-1 range) to linear RGB using IEC 61966-2-1"""
+    srgb_f01 = np.clip(srgb_f01, 0, 1)
+    linear_rgb = np.where(srgb_f01 <= 0.04045,
+                      srgb_f01 / 12.92,
+                      ((srgb_f01 + 0.055) / 1.055) ** 2.4)
+    return np.clip(linear_rgb, 0, 1)
+
+
+def linear_to_srgb(linear_rgb):
+    """
+    Convert linear RGB [0,1] to sRGB [0,1] using standard gamma encoding.
+    Accepts a NumPy array or image of shape (..., 3).
+    """
+    linear_rgb = np.clip(linear_rgb, 0, 1)  # Ensure valid input
+
+    threshold = 0.0031308
+    a = 0.055
+
+    srgb = np.where(
+        linear_rgb <= threshold,
+        linear_rgb * 12.92,
+        (1 + a) * np.power(linear_rgb, 1 / 2.4) - a
+    )
+    return np.clip(srgb, 0, 1)

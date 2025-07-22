@@ -17,18 +17,14 @@ def white_balance_to_gray_patch(img_rgb_f01, measured_patch_rgb_f01, reference_p
     All inputs are in linear RGB [0,1].
     """
     gains = reference_patch_rgb_f01 / np.clip(measured_patch_rgb_f01, 1e-6, None)
-    gains = gains / gains[1]  # normalize green channel gain to 1
+    gains = gains / gains.mean()  # normalize green channel gain to 1
     print(f"🎨 White balance gains: {gains}")
     img_wb_f01 = img_rgb_f01 * gains
+    max_val = img_wb_f01.max()
+    if max_val > 1.0:
+        img_wb_f01 =  img_wb_f01 / max_val
+    # Ensure the output is still in [0, 1] range
     return np.clip(img_wb_f01, 0, 1)
-
-def srgb_to_linear(srgb_f01):
-    """Convert sRGB (0-1 range) to linear RGB using IEC 61966-2-1"""
-    srgb_f01 = np.clip(srgb_f01, 0, 1)
-    linear_rgb = np.where(srgb_f01 <= 0.04045,
-                      srgb_f01 / 12.92,
-                      ((srgb_f01 + 0.055) / 1.055) ** 2.4)
-    return np.clip(linear_rgb, 0, 1)
 
 clicked_points = []
 
@@ -121,16 +117,17 @@ ground_truth_srgb_f01 = np.array([
 ground_truth_linear_rgb_f01 = srgb_to_linear(ground_truth_srgb_f01)
 
 gray_patch_index = 22  # Patch #22 is the cloest to gray neutral
-measured_gray_rgb_f01 = measured_rgbs[gray_patch_index]
+measured_gray_rgb_f01 = measured_rgbs[1]
 ground_truth_gray_rgb_f01 = ground_truth_linear_rgb_f01[gray_patch_index]
 
-img_rgb_f01 = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+img_rgb_f01 = bit8_to_normalize01(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
 img_rgb_wb_f01 = white_balance_to_gray_patch(img_rgb_f01, measured_gray_rgb_f01, ground_truth_gray_rgb_f01)
 
-img_rgb_wb_u8 = normalize01_to_8bit(img_rgb_wb_f01)
+img_srgb_wb_f01 = linear_to_srgb(img_rgb_wb_f01)
+img_srgb_wb_u8 = normalize01_to_8bit(img_srgb_wb_f01)
 
-scale = screen_width / img_rgb_wb_u8.shape[1]
-display = cv2.resize(img_rgb_wb_u8.copy(), None, fx=scale, fy=scale)
+scale = screen_width / img_srgb_wb_u8.shape[1]
+display = cv2.resize(img_srgb_wb_u8.copy(), None, fx=scale, fy=scale)
 
 img = cv2.cvtColor(display, cv2.COLOR_RGB2BGR)
 def show_pixel_values(event, x, y, flags, param):
