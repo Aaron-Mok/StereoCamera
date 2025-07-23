@@ -16,24 +16,25 @@ def white_balance_to_gray_patch(img_rgb_f01, measured_patch_rgb_f01, reference_p
     Apply white balance so that measured_patch_rgb becomes reference_patch_rgb.
     All inputs are in linear RGB [0,1].
     """
-    gains = reference_patch_rgb_f01 / np.clip(measured_patch_rgb_f01, 1e-6, None)
-    gains = gains / gains.mean()  # normalize green channel gain to 1
-    print(f"🎨 White balance gains: {gains}")
-    img_wb_f01 = img_rgb_f01 * gains
+    wb_gains = reference_patch_rgb_f01 / np.clip(measured_patch_rgb_f01, 1e-6, None)
+    wb_gains = wb_gains / wb_gains.mean()  # normalize green channel gain to 1
+    print(f"🎨 White balance gains: {wb_gains}")
+    img_wb_f01 = img_rgb_f01 * wb_gains
     max_val = img_wb_f01.max()
     if max_val > 1.0:
         img_wb_f01 =  img_wb_f01 / max_val
     # Ensure the output is still in [0, 1] range
-    return np.clip(img_wb_f01, 0, 1)
+    return np.clip(img_wb_f01, 0, 1), wb_gains
 
 clicked_points = []
 
-img_bgr = cv2.imread("./captures/SpyderCHECKR_linear_rgb_before_wb.png")
+img_bgr_linear_u8 = cv2.imread("./captures/SpyderCHECKR_linear_rgb_before_wb.png")
+img_bgr_linear_u8 = cv2.flip(img_bgr_linear_u8, -1) 
 
 # Resize for display
 screen_width = 1024  # adjust as needed
-scale = screen_width / img_bgr.shape[1]
-display = cv2.resize(img_bgr.copy(), None, fx=scale, fy=scale)
+scale = screen_width / img_bgr_linear_u8.shape[1]
+display = cv2.resize(img_bgr_linear_u8.copy(), None, fx=scale, fy=scale)
 
 # Callback for mouse clicks
 def click_event(event, x, y, flags, param):
@@ -64,17 +65,17 @@ dst_pts = np.array([
 
 # Perspective transform
 M = cv2.getPerspectiveTransform(src_pts, dst_pts)
-warped_bgr = cv2.warpPerspective(img_bgr, M, (w, h))
+warped_bgr_linear_u8 = cv2.warpPerspective(img_bgr_linear_u8, M, (w, h))
 
-cv2.imshow("Warped Perspective", warped_bgr)
+cv2.imshow("Warped Perspective", warped_bgr_linear_u8)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
 # Sample color patches
 patch_w = w // 6
 patch_h = h // 4
-measured_rgbs = []
-annotated = warped_bgr.copy()
+measured_rgbs_linear_u8 = []
+annotated = warped_bgr_linear_u8.copy()
 
 for r in range(4):
     for c in range(6):
@@ -83,10 +84,10 @@ for r in range(4):
         y_center = r * patch_h + patch_h // 2
 
         # Extract patch
-        patch_bgr = warped_bgr[y_center-10:y_center+10, x_center-10:x_center+10]
-        patch_rgb = cv2.cvtColor(patch_bgr, cv2.COLOR_BGR2RGB)
-        avg_rgb = np.mean(patch_rgb.reshape(-1, 3), axis=0)
-        measured_rgbs.append(avg_rgb)
+        patch_bgr_linear_u8 = warped_bgr_linear_u8[y_center-10:y_center+10, x_center-10:x_center+10]
+        patch_rgb_linear_u8 = cv2.cvtColor(patch_bgr_linear_u8, cv2.COLOR_BGR2RGB)
+        avg_patch_rgb_linear_u8 = np.mean(patch_rgb_linear_u8.reshape(-1, 3), axis=0)
+        measured_rgbs_linear_u8.append(avg_patch_rgb_linear_u8)
 
         # Draw rectangle around patch
         top_left = (x_center - 10, y_center - 10)
@@ -94,7 +95,7 @@ for r in range(4):
         cv2.rectangle(annotated, top_left, bottom_right, color=(0, 255, 0), thickness=1)
 
         # Draw patch index
-        cv2.putText(annotated, str(idx+1), (x_center - 5, y_center - 12),
+        cv2.putText(annotated, str(idx), (x_center - 5, y_center - 12),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
 
 # Show the annotated warped image
@@ -102,9 +103,9 @@ cv2.imshow("Sampled Patches", annotated)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
-measured_rgbs = np.array(measured_rgbs) / 255.0
+measured_rgbs_linear_f01 = bit8_to_normalize01(np.array(measured_rgbs_linear_u8))
 print("✅ Measured RGBs (normalized):")
-print(measured_rgbs)
+print(measured_rgbs_linear_u8)
 
 # Reference sRGB values for datacolor Spyder CHECKR (24 patches)
 ground_truth_srgb_f01 = np.array([
@@ -117,13 +118,13 @@ ground_truth_srgb_f01 = np.array([
 ground_truth_linear_rgb_f01 = srgb_to_linear(ground_truth_srgb_f01)
 
 gray_patch_index = 22  # Patch #22 is the cloest to gray neutral
-measured_gray_rgb_f01 = measured_rgbs[1]
+measured_gray_rgb_f01 = measured_rgbs_linear_f01[gray_patch_index]
 ground_truth_gray_rgb_f01 = ground_truth_linear_rgb_f01[gray_patch_index]
 
-img_rgb_f01 = bit8_to_normalize01(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
-img_rgb_wb_f01 = white_balance_to_gray_patch(img_rgb_f01, measured_gray_rgb_f01, ground_truth_gray_rgb_f01)
+img_rgb_linear_f01 = bit8_to_normalize01(cv2.cvtColor(img_bgr_linear_u8, cv2.COLOR_BGR2RGB))
+img_rgb_wb_linear_f01, wb_gains = white_balance_to_gray_patch(img_rgb_linear_f01, measured_gray_rgb_f01, ground_truth_gray_rgb_f01)
 
-img_srgb_wb_f01 = linear_to_srgb(img_rgb_wb_f01)
+img_srgb_wb_f01 = linear_to_srgb(img_rgb_wb_linear_f01)
 img_srgb_wb_u8 = normalize01_to_8bit(img_srgb_wb_f01)
 
 scale = screen_width / img_srgb_wb_u8.shape[1]
@@ -141,26 +142,27 @@ cv2.imshow("White Balanced Image", img)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
-
-# --- Step 4: Solve for 3x3 Color Correction Matrix ---
+# --- Solve for 3x3 Color Correction Matrix ---
 # Least squares solution: ref = A @ measured
-# A, _, _, _ = np.linalg.lstsq(measured_rgbs, reference_rgbs, rcond=None)
-# print("Color Correction Matrix:\n", A)
+# ground_truth_linear_rgb_f01 = measured_rgbs_linear_f01 @ A
+# A = np.linalg.lstsq(X, Y) X @ A = Y
+A, _, _, _ = np.linalg.lstsq(measured_rgbs_linear_f01 * wb_gains, ground_truth_linear_rgb_f01, rcond=None)
+print("Color Correction Matrix:\n", A)
 
-# # --- Step 5: Apply to your image ---
-# img_corrected = img.astype(np.float32) / 255.0
-# reshaped = img_corrected.reshape((-1, 3))
-# corrected = np.clip(reshaped @ A, 0, 1)
-# img_corrected = (corrected.reshape(img.shape) * 255).astype(np.uint8)
+# --- Step 5: Apply to your image ---
+img_rgb_wb_linear_f01_reshaped = img_rgb_wb_linear_f01.reshape(-1, 3)
+corrected = img_rgb_wb_linear_f01_reshaped @ A
+img_corrected = linear_to_srgb(corrected.reshape(img_rgb_wb_linear_f01.shape))
 
-# # --- Step 6: Display Before and After ---
-# plt.subplot(1, 2, 1)
-# plt.title("Original")
-# plt.imshow(img)
 
-# plt.subplot(1, 2, 2)
-# plt.title("Color Calibrated")
-# plt.imshow(img_corrected)
+# --- Step 6: Display Before and After ---
+plt.subplot(1, 2, 1)
+plt.title("Original")
+plt.imshow(display)
 
-# plt.tight_layout()
-# plt.show()
+plt.subplot(1, 2, 2)
+plt.title("Color Calibrated")
+plt.imshow(img_corrected)
+
+plt.tight_layout()
+plt.show()
