@@ -124,6 +124,8 @@ ground_truth_gray_rgb_f01 = ground_truth_linear_rgb_f01[gray_patch_index]
 img_rgb_linear_f01 = bit8_to_normalize01(cv2.cvtColor(img_bgr_linear_u8, cv2.COLOR_BGR2RGB))
 img_rgb_wb_linear_f01, wb_gains = white_balance_to_gray_patch(img_rgb_linear_f01, measured_gray_rgb_f01, ground_truth_gray_rgb_f01)
 
+np.save("./Calibration_output/wb_gains.npy", wb_gains)
+
 img_srgb_wb_f01 = linear_to_srgb(img_rgb_wb_linear_f01)
 img_srgb_wb_u8 = normalize01_to_8bit(img_srgb_wb_f01)
 
@@ -148,6 +150,7 @@ cv2.destroyAllWindows()
 # A = np.linalg.lstsq(X, Y) X @ A = Y
 A, _, _, _ = np.linalg.lstsq(measured_rgbs_linear_f01 * wb_gains, ground_truth_linear_rgb_f01, rcond=None)
 print("Color Correction Matrix:\n", A)
+np.save("./Calibration_output/color_correction_matrix.npy", A)
 
 # --- Step 5: Apply to your image ---
 img_rgb_wb_linear_f01_reshaped = img_rgb_wb_linear_f01.reshape(-1, 3)

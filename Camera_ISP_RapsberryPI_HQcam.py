@@ -33,28 +33,39 @@ while True:
 
     # Demosaic
     raw_unstrided_corrected_u8 = normalize01_to_8bit(raw_unstrided_blckoff_f255/ 255.0)
-    rgb_image_u8 = cv2.cvtColor(raw_unstrided_corrected_u8, cv2.COLOR_BAYER_BGGR2BGR) # This is Bilinear. There are three options: Bilinear, Edge Aware, and Variable Number of Gradients
-    cv2.imshow("linear_RGB", rgb_image_u8)
+    linear_bgr_image_u8 = cv2.cvtColor(raw_unstrided_corrected_u8, cv2.COLOR_BAYER_BGGR2BGR) # This is Bilinear. There are three options: Bilinear, Edge Aware, and Variable Number of Gradients
+    img_rgb_linear_f01 = bit8_to_normalize01(cv2.cvtColor(linear_bgr_image_u8, cv2.COLOR_BGR2RGB))
+    # cv2.imshow("linear_BGR", linear_bgr_image_u8)
 
     # White Balance
-    rgb_image_f01 = bit8_to_normalize01(rgb_image_u8)
-    rgb_image_awb_f01 = gray_world_awb(rgb_image_f01)
+    wb_gains = np.load("./Calibration_output/wb_gains.npy")
+    linear_rgb_image_awb_f01 = gray_world_awb(img_rgb_linear_f01)
+    # linear_rgb_image_awb_f01 = img_rgb_linear_f01 * wb_gains
     # rgb_image_awb = from_calibration_wb(rgb_image.astype(np.float32) / 255.0)
+
+    # Color Correction
+    A = np.load("./Calibration_output/color_correction_matrix.npy")
+    linear_rgb_image_awb_ccm_f01 = linear_rgb_image_awb_f01 @ A
+    
+    saturated_mask = np.any(linear_rgb_image_awb_ccm_f01 > 1.0, axis=-1)
+    linear_rgb_image_awb_ccm_f01[saturated_mask] = [1.0, 1.0, 1.0]
 
     # Gamma correction
     # rgb_image_awb_gamma_f01 = apply_gamma_correction(rgb_image_awb_f01, gamma=2.2)
-    rgb_image_awb_gamma_f01 = apply_sRGB_gamma_encoding(rgb_image_awb_f01)
+    rgb_image_awb_gamma_f01 = linear_to_srgb(linear_rgb_image_awb_ccm_f01)
     rgb_image_awb_gamma_8u = normalize01_to_8bit(rgb_image_awb_gamma_f01)
 
+
     # Display
-    cv2.imshow("Gamma Corrected", rgb_image_awb_gamma_8u)
+    bgr_image_awb_gamma_8u = cv2.cvtColor(rgb_image_awb_gamma_8u, cv2.COLOR_RGB2BGR)
+    cv2.imshow("Gamma Corrected", bgr_image_awb_gamma_8u)
 
     key = cv2.waitKey(1) & 0xFF
     if key == ord('q'):
         break
     elif key == ord('c'):
         filename = os.path.join(capture_dir, f"capture_{capture_count:04d}.png")
-        cv2.imwrite(filename, rgb_image_u8)
+        cv2.imwrite(filename, linear_bgr_image_u8)
         print(f"[INFO] Captured image saved to {filename}")
         capture_count += 1
 
