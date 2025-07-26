@@ -35,12 +35,12 @@ Modern stereo vision systems often hide their internal processes. This project a
 **Status:** Ongoing Project  
 - [x] Image signal processing for raw capture
   - [x] Stride/padding correction
-  - [ ] Black level subtraction
+  - [x] Black level subtraction
   - [ ] Distortion correction
-  - [ ] Lens shading correction
+  - [x] Lens shading correction
   - [x] Demosaicing
   - [x] White balance
-  - [ ] Color calibration
+  - [x] Color calibration
   - [x] Gamma correction
 - [ ] 3D-printed mount design and testing
 - [ ] Initial stereo calibration
