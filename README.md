@@ -27,9 +27,6 @@ This project showcases the complete stereo vision pipeline, from lens and sensor
 - Real-time visualization and debugging tools
 - Modular and extensible Python codebase
 
-## Motivation
-
-Modern stereo vision systems often hide their internal processes. This project aims to **demystify** the full imaging and stereo pipeline—bridging camera hardware, optics, and software—from first principles. It serves both as a learning platform and as a foundation for future computer vision or robotics applications.
 
 ## Current Progress
 **Status:** Ongoing Project  
