@@ -17,6 +17,9 @@ capture_count = 1
 while True:
     # Capture raw image form camera
     raw_u8 = capture_raw_image(cam_obj)
+    raw16 = (raw_u8[:, 1::2].astype(np.uint16) << 8) | raw_u8[:, ::2].astype(np.uint16)
+    cv2.imshow("raw16", raw16)
+
 
     # Stride/padding correction
     raw_unstrided_u8 =  correct_stride_padding(raw_u8, img_width_px=output_im_size_px[0])
