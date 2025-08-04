@@ -6,16 +6,14 @@ def apply_black_offset(image, offset):
     Offset can be measured from the black_offset_measurement.py script.
 
     Args:
-        image (np.ndarray): Input raw image (can be float or integer type), 8bit image.
-        offset (float): The constant black level to subtract.
+        image (np.ndarray): Input raw image (can be float or integer type), 8bit or 16 bit image.
+        offset (int): The constant black level to subtract.
 
     Returns:
-        np.ndarray (float): Black-offset corrected image (clipped to [0, inf]).
+        np.ndarray (int): Black-offset corrected image (clipped to [0, inf]).
     """
-    # Convert to float for safe subtraction if needed
-    image_float = image.astype(np.float32)
-    
     # Subtract black offset and clip
-    corrected = np.clip(image_float - offset, 0, None)
+    corrected = image - offset
+    corrected = np.clip(corrected, 0, None)  # Ensure no negative values
 
     return corrected
