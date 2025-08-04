@@ -16,6 +16,21 @@ def bit8_to_normalize01(img_8bit):
     img_normalized = img_8bit.astype(np.float32) / 255.0
     return img_normalized
 
+def bit16_to_normalize01(img_8bit):
+    """
+    Convert an 8-bit (uint8) image to float32 format with values normalized to [0, 1].
+    """
+    img_normalized = img_8bit.astype(np.float32) / 65535.0
+    return img_normalized
+
+def normalize01_to_16bit(img_normalized):
+    """
+    Convert an image with values in [0, 1] (normalized float32/float64)
+    to 8-bit (uint8) format.
+    """
+    img_16bit = np.clip(img_normalized * 65535.0, 0, 65535).astype(np.uint16)
+    return img_16bit
+
 
 def srgb_d65_to_srgb_d50(rgb_srgb_d65):
     """
