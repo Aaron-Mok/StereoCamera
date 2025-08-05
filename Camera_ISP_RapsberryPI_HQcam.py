@@ -20,7 +20,7 @@ while True:
 
     # Bit and stride correction
     raw_u16 =  unpack_and_trim_raw(raw_u8, img_width_px=output_im_size_px[0], bit_depth=16)
-    cv2.imshow("raw16", raw_u16)
+    # cv2.imshow("raw16", raw_u16)
 
     # Add black offset subtraction
     raw_unstrided_blckoff_u16 = apply_black_offset(raw_u16, offset=4110)  # Use the measured black offset value
@@ -32,16 +32,15 @@ while True:
     # cv2.imshow("raw_unstrided_corrected_8bit", raw_unstrided_corrected_8bit)
 
     # Demosaic
-    # raw_unstrided_corrected_u8 = normalize01_to_8bit(raw_unstrided_blckoff_f255/ 255.0)
     linear_bgr_image_u16 = cv2.cvtColor(raw_unstrided_blckoff_u16, cv2.COLOR_BAYER_BGGR2BGR) # This is Bilinear. There are three options: Bilinear, Edge Aware, and Variable Number of Gradients
     img_rgb_linear_f01 = bit16_to_normalize01(cv2.cvtColor(linear_bgr_image_u16, cv2.COLOR_BGR2RGB))
-    # cv2.imshow("linear_BGR", linear_bgr_image_u8)
+    # cv2.imshow("linear_BGR", linear_bgr_image_u16)
 
     # White Balance
-    wb_gains = np.load("./Calibration_output/wb_gains.npy")
     linear_rgb_image_awb_f01 = gray_world_awb(img_rgb_linear_f01)
+    # This is calibrated using gray patch and D50 illumination
+    # wb_gains = np.load("./Calibration_output/wb_gains.npy")
     # linear_rgb_image_awb_f01 = img_rgb_linear_f01 * wb_gains
-    # rgb_image_awb = from_calibration_wb(rgb_image.astype(np.float32) / 255.0)
 
     # Color Correction
     A = np.load("./Calibration_output/color_correction_matrix.npy")
@@ -52,7 +51,6 @@ while True:
     linear_rgb_image_awb_ccm_f01[saturated_mask] = [1.0, 1.0, 1.0]
 
     # Gamma correction
-    # rgb_image_awb_gamma_f01 = apply_gamma_correction(rgb_image_awb_f01, gamma=2.2)
     rgb_image_awb_gamma_f01 = linear_to_srgb(linear_rgb_image_awb_ccm_f01)
     rgb_image_awb_gamma_8u = normalize01_to_8bit(rgb_image_awb_gamma_f01) # to 8 bit for display
 
@@ -66,7 +64,7 @@ while True:
         break
     elif key == ord('c'):
         filename = os.path.join(capture_dir, f"capture_{capture_count:04d}.png")
-        cv2.imwrite(filename, linear_bgr_image_u8)
+        cv2.imwrite(filename, raw_u16)
         print(f"[INFO] Captured image saved to {filename}")
         capture_count += 1
 
