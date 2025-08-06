@@ -37,10 +37,10 @@ while True:
     # cv2.imshow("linear_BGR", linear_bgr_image_u16)
 
     # White Balance
-    linear_rgb_image_awb_f01 = gray_world_awb(img_rgb_linear_f01)
+    # linear_rgb_image_awb_f01 = gray_world_awb(img_rgb_linear_f01)
     # This is calibrated using gray patch and D50 illumination
-    # wb_gains = np.load("./Calibration_output/wb_gains.npy")
-    # linear_rgb_image_awb_f01 = img_rgb_linear_f01 * wb_gains
+    wb_gains = np.load("./Calibration_output/wb_gains.npy")
+    linear_rgb_image_awb_f01 = img_rgb_linear_f01 * wb_gains
 
     # Color Correction
     A = np.load("./Calibration_output/color_correction_matrix.npy")
@@ -52,20 +52,37 @@ while True:
 
     # Gamma correction
     rgb_image_awb_gamma_f01 = linear_to_srgb(linear_rgb_image_awb_ccm_f01)
-    rgb_image_awb_gamma_8u = normalize01_to_8bit(rgb_image_awb_gamma_f01) # to 8 bit for display
+    rgb_image_awb_gamma_u8 = normalize01_to_8bit(rgb_image_awb_gamma_f01) # to 8 bit for display
 
 
     # Display
-    bgr_image_awb_gamma_8u = cv2.cvtColor(rgb_image_awb_gamma_8u, cv2.COLOR_RGB2BGR)
-    cv2.imshow("Gamma Corrected", bgr_image_awb_gamma_8u)
+    bgr_image_awb_gamma_u8 = cv2.cvtColor(rgb_image_awb_gamma_u8, cv2.COLOR_RGB2BGR)
+    bgr_image_awb_gamma_u8_flip = cv2.flip(bgr_image_awb_gamma_u8, -1)  # Flip the image vertically
+    cv2.imshow("Gamma Corrected", bgr_image_awb_gamma_u8_flip)
 
     key = cv2.waitKey(1) & 0xFF
     if key == ord('q'):
         break
     elif key == ord('c'):
-        filename = os.path.join(capture_dir, f"capture_{capture_count:04d}.png")
-        cv2.imwrite(filename, raw_u16)
+        filename = os.path.join(capture_dir, f"raw_u8_{capture_count:02d}.png")
+        cv2.imwrite(filename,raw_u8)
         print(f"[INFO] Captured image saved to {filename}")
+        filename = os.path.join(capture_dir, f"raw_u16_{capture_count:02d}.png")
+        cv2.imwrite(filename,raw_u16)
+        print(f"[INFO] Captured image saved to {filename}")
+        filename = os.path.join(capture_dir, f"linear_bgr_image_u16_{capture_count:02d}.png")
+        cv2.imwrite(filename,linear_bgr_image_u16)
+        print(f"[INFO] Captured image saved to {filename}")
+        filename = os.path.join(capture_dir, f"linear_bgr_image_awb_u16{capture_count:02d}.png")
+        cv2.imwrite(filename,cv2.cvtColor(normalize01_to_16bit(linear_rgb_image_awb_f01), cv2.COLOR_RGB2BGR))
+        print(f"[INFO] Captured image saved to {filename}")
+        filename = os.path.join(capture_dir, f"linear_rgb_image_awb_ccm_u16{capture_count:02d}.png")
+        cv2.imwrite(filename,cv2.cvtColor(normalize01_to_16bit(linear_rgb_image_awb_ccm_f01), cv2.COLOR_RGB2BGR))
+        print(f"[INFO] Captured image saved to {filename}")
+        filename = os.path.join(capture_dir, f"bgr_image_awb_gamma_u8{capture_count:02d}.png")
+        cv2.imwrite(filename,bgr_image_awb_gamma_u8)
+        print(f"[INFO] Captured image saved to {filename}")
+
         capture_count += 1
 
 cv2.destroyAllWindows()
