@@ -3,9 +3,11 @@ import matplotlib.pyplot as plt
 from picamera2 import Picamera2
 import time
 import cv2
+from scipy.stats import norm
 
 import os
 import sys
+
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
@@ -43,7 +45,7 @@ black_offsets.append(black_level)
 # plt.figure()
 # plt.style.use('style.mplstyle')
 # plt.plot(gain_values, black_offsets, 'o-', label='Measured black level')
-# plt.xlabel("Analog Gain")
+# plt.xlabel("Analog Gain")q
 # plt.ylabel("Mean Black Offset")
 # plt.title("Black Offset vs. Analog Gain")
 # plt.grid(True)
@@ -51,10 +53,20 @@ black_offsets.append(black_level)
 # plt.show()
 # cv2.destroyAllWindows()
 
+data = raw_u16.flatten()
+mu, sigma = np.mean(data), np.std(data)
+
+plt.style.use('./style.mplstyle')
+
 plt.figure()
-plt.hist(raw_u16.flatten(), bins=30, range=(3500, 4500), color='gray')
-plt.title(f"Histogram at Gain {gain:.2f}")
-plt.xlabel("Pixel Value (Gray Level)")
-plt.ylabel("Frequency")
+plt.hist(data, bins=30, range=(3500, 4500), color='gray', density=True, alpha=0.5)
+plt.title(f"Black Offset Histogram")
+plt.xlabel("Pixel Value [Gray Level]")
+plt.ylabel("Probability Density")
 plt.grid(True)
+
+# Overlay Gaussian
+x = np.linspace(3500, 4500, 500)
+plt.plot(x, norm.pdf(x, mu, sigma), lw=2, label=f"Normal curve using \nμ={mu:.1f}, σ={sigma:.1f} from the data")
+plt.legend(loc='upper left')
 plt.show()
