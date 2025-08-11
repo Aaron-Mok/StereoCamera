@@ -11,6 +11,9 @@ sys.path.append(parent_dir)
 from ISP import *
 from conversion_utils import *
 
+capture_dir = "captures"
+os.makedirs(capture_dir, exist_ok=True)
+
 def white_balance_to_gray_patch(img_rgb_f01, measured_patch_rgb_f01, reference_patch_rgb_f01):
     """
     Apply white balance so that measured_patch_rgb becomes reference_patch_rgb.
@@ -30,6 +33,9 @@ clicked_points = []
 
 img_bgr_linear_u8 = cv2.imread("./captures/SpyderCHECKR_linear_rgb_before_wb.png")
 img_bgr_linear_u8 = cv2.flip(img_bgr_linear_u8, -1) 
+
+filename = os.path.join(capture_dir, f"SpyderCHECKR_linear_rgb_before_wb_flip.png")
+cv2.imwrite(filename,img_bgr_linear_u8)
 
 # Resize for display
 screen_width = 1024  # adjust as needed
@@ -141,6 +147,9 @@ def show_pixel_values(event, x, y, flags, param):
 cv2.namedWindow("White Balanced Image", cv2.WINDOW_NORMAL)
 cv2.setMouseCallback("White Balanced Image", show_pixel_values)
 cv2.imshow("White Balanced Image", img)
+filename = os.path.join(capture_dir, f"white_balanced_image.png")
+cv2.imwrite(filename,img)
+
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
@@ -157,6 +166,16 @@ img_rgb_wb_linear_f01_reshaped = img_rgb_wb_linear_f01.reshape(-1, 3)
 corrected = img_rgb_wb_linear_f01_reshaped @ A
 img_corrected = linear_to_srgb(corrected.reshape(img_rgb_wb_linear_f01.shape))
 
+# Gamma correction
+rgb_image_awb_gamma_u8 = normalize01_to_8bit(img_corrected) # to 8 bit for display
+
+# Display
+bgr_image_awb_gamma_u8 = cv2.cvtColor(rgb_image_awb_gamma_u8, cv2.COLOR_RGB2BGR)
+bgr_image_awb_gamma_u8_flip = cv2.flip(bgr_image_awb_gamma_u8, -1)  # Flip the image vertically
+
+
+filename = os.path.join(capture_dir, f"white_balanced_ccm_image.png")
+cv2.imwrite(filename,bgr_image_awb_gamma_u8)
 
 # --- Step 6: Display Before and After ---
 plt.subplot(1, 2, 1)
