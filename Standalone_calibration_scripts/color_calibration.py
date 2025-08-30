@@ -37,8 +37,8 @@ img_bgr_linear_u8 = cv2.flip(img_bgr_linear_u8, -1)
 filename = os.path.join(capture_dir, f"SpyderCHECKR_srgb_before_wb_flip.png")
 
 img_rgb_linear_u8 = cv2.cvtColor(img_bgr_linear_u8, cv2.COLOR_BGR2RGB)
-img_bgr_linear_f01 = bit8_to_normalize01(img_rgb_linear_u8)
-img_srgb_f01 = linear_to_srgb(img_bgr_linear_f01)
+img_rgb_linear_f01 = bit8_to_normalize01(img_rgb_linear_u8)
+img_srgb_f01 = linear_to_srgb(img_rgb_linear_f01)
 img_srgb_u8 = normalize01_to_8bit(img_srgb_f01)
 
 cv2.imwrite(filename,img_srgb_u8)
