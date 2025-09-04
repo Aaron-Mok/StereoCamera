@@ -63,3 +63,25 @@ def capture_raw_image(picam2):
     print("Digital Gain:", metadata["DigitalGain"])
     print("Exposure Time (µs):", metadata["ExposureTime"])
     return raw
+
+def initialize_camera_with_ISP(camera_id, image_size):
+    """
+    Initialize a Raspberry Pi camera using Picamera2 with ISP processing.
+
+    Args:
+        camera_id (int): ID of the camera to use (0 or 1 for CSI port).
+        image_size (tuple): Desired image resolution as (width, height), e.g., (2028, 1520).
+
+    Returns:
+        Picamera2: Initialized camera object.
+        tuple: Actual image size as (width, height).
+    """
+    picam2 = Picamera2(camera_id)
+    config = picam2.create_preview_configuration(main={"format": "RGB888", "size": image_size})
+    picam2.configure(config)
+    print("Camera configuration:")
+    print(picam2.camera_configuration())
+    img_width_px, image_height_px = picam2.camera_configuration()['sensor']['output_size']
+    picam2.start()
+    output_im_size = (img_width_px, image_height_px)
+    return picam2, output_im_size
