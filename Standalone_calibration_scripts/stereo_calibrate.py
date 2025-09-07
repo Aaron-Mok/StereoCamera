@@ -12,11 +12,11 @@ from StereoCamera import camera_utils
 # ----------------------------
 # USER SETTINGS
 # ----------------------------
-LEFT_CAM_INDEX  = 0
-RIGHT_CAM_INDEX = 1
-RESOLUTION      = (1280, 720)   # requested output size
+LEFT_CAM_INDEX  = 1
+RIGHT_CAM_INDEX = 0 
+RESOLUTION      = (800, 600)   # requested output size
 FPS             = 30
-FLIP_FRAMES     = True         # flip both frames 180° (cv2.flip(..., -1))
+FLIP_FRAMES     = False         # flip both frames 180° (cv2.flip(..., -1))
 
 # Checkerboard settings
 # INNER CORNERS (e.g., a 10x7 squares board has 9x6 inner corners)
@@ -77,7 +77,7 @@ def main():
     # Initialize both cameras via your helper (assumed to start pipelines)
     left_picam2,  _ = camera_utils.initialize_camera_with_ISP(LEFT_CAM_INDEX,  RESOLUTION)
     right_picam2, _ = camera_utils.initialize_camera_with_ISP(RIGHT_CAM_INDEX, RESOLUTION)
-
+    
     time.sleep(2.0)
     meta = left_picam2.capture_metadata()
     exp_time = meta.get("ExposureTime", 10000)

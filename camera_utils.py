@@ -82,6 +82,6 @@ def initialize_camera_with_ISP(camera_id, image_size):
     print("Camera configuration:")
     print(picam2.camera_configuration())
     img_width_px, image_height_px = picam2.camera_configuration()['sensor']['output_size']
-    picam2.start()
     output_im_size = (img_width_px, image_height_px)
+    picam2.start()
     return picam2, output_im_size
