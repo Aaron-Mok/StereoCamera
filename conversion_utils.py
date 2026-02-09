@@ -1,5 +1,5 @@
 import numpy as np
-import colour
+# import colour
 
 def normalize01_to_8bit(img_normalized):
     """
