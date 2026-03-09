@@ -15,7 +15,6 @@ import subprocess
 #     cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
 #     return cap, (width, height)
 
-
 def initialize_camera(camera_id, image_size):
     """
     On Jetson, we use a GStreamer pipeline string.
