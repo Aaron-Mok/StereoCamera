@@ -115,3 +115,38 @@ def initialize_camera_with_ISP(camera_id, image_size):
     output_im_size = (img_width_px, image_height_px)
     picam2.start()
     return picam2, output_im_size
+
+def initialize_camera_jetson(device, W=3840, H=2160, exposure=33000, gain=200, frame_rate=30000000):
+    """
+    Initialize a Jetson camera via v4l2-ctl and return a streaming subprocess.
+    Returns the subprocess and frame_bytes size.
+    """
+    frame_bytes = W * H * 2  # 16-bit-per-pixel, 2 bytes
+
+    subprocess.run(["v4l2-ctl", "-d", device, "--set-ctrl=override_enable=1"])
+    subprocess.run(["v4l2-ctl", "-d", device, "--set-ctrl=group_hold=1"])
+    subprocess.run([
+        "v4l2-ctl", "-d", device,
+        f"--set-ctrl=exposure={exposure}",
+        f"--set-ctrl=gain={gain}",
+        f"--set-ctrl=frame_rate={frame_rate}"
+    ])
+
+    p = subprocess.Popen([
+        "v4l2-ctl", "-d", device,
+        "--stream-mmap", "--stream-count=0", "--stream-to=-"
+    ], stdout=subprocess.PIPE, bufsize=frame_bytes)
+
+    return p, frame_bytes
+
+
+def capture_raw_frame_jetson(p, W=3840, H=2160):
+    """
+    Read one raw frame from the v4l2 stream subprocess.
+    Returns np.ndarray of shape (H, W) dtype uint16, or None on EOF.
+    """
+    frame_bytes = W * H * 2  # Ensure this matches the expected frame size
+    buf = p.stdout.read(frame_bytes)
+    if len(buf) != frame_bytes:
+        return None
+    return np.frombuffer(buf, dtype=np.uint16).reshape(H, W)
