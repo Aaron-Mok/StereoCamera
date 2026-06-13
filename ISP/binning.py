@@ -13,3 +13,21 @@ def bin_bayer_2x2(bayer: np.ndarray) -> np.ndarray:
     out[1::2, 0::2] = (bayer[1::4, 0::4].astype(np.uint32) + bayer[1::4, 2::4] + bayer[3::4, 0::4] + bayer[3::4, 2::4]) >> 2
     out[1::2, 1::2] = (bayer[1::4, 1::4].astype(np.uint32) + bayer[1::4, 3::4] + bayer[3::4, 1::4] + bayer[3::4, 3::4]) >> 2
     return out
+
+
+def extract_green(bayer: np.ndarray) -> np.ndarray:
+    """Extract green channel from a BGGR Bayer image.
+    Input:  (H, W) uint16 Bayer BGGR
+    Output: (H//2, W//2) uint16 — average of Gr and Gb
+    """
+    Gr = bayer[0::2, 1::2]
+    Gb = bayer[1::2, 0::2]
+    return ((Gr.astype(np.uint32) + Gb) >> 1).astype(np.uint16)
+
+
+def extract_green_channels(bayer: np.ndarray):
+    """Return Gr and Gb separately from a BGGR Bayer image.
+    Input:  (H, W) uint16 Bayer BGGR
+    Output: two (H//2, W//2) uint16 arrays — (Gr, Gb)
+    """
+    return bayer[0::2, 1::2], bayer[1::2, 0::2]

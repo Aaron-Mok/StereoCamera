@@ -18,7 +18,8 @@ while True:
     raw_u16_binned = bin_bayer_2x2(raw_u16)                                   # 1080×1920
 
     # Display
-    cv2.imshow("raw_u16", raw_u16_binned)
+    cv2.imshow("raw_u16", raw_u16)
+    cv2.imshow("raw_u16_binned", raw_u16_binned)
 
     key = cv2.waitKey(1) & 0xFF
     if key == ord('q'):
@@ -26,6 +27,9 @@ while True:
     elif key == ord('c'):
         filename = os.path.join(capture_dir, f"raw_u16_{capture_count:02d}.png")
         cv2.imwrite(filename, raw_u16)
+        print(f"[INFO] Captured image saved to {filename}")
+        filename = os.path.join(capture_dir, f"raw_u16_binned_{capture_count:02d}.png")
+        cv2.imwrite(filename, raw_u16_binned)
         print(f"[INFO] Captured image saved to {filename}")
 
         capture_count += 1
