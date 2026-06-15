@@ -21,8 +21,10 @@ FRAME_RATE = 30000000
 CALIB_FILE  = "Calibration_output/Stereo_params_20260614_Jetson.yml"
 CAPTURE_DIR = "captures"
 
-NUM_DISPARITIES = 64   # must be multiple of 16
-BLOCK_SIZE      = 5
+NUM_DISPARITIES = 16 * 10   # must be multiple of 16
+BLOCK_SIZE      = 9         # 5-11 recommended; smaller = more detail, noisier
+WLS_LAMBDA      = 8000      # WLS filter smoothness (higher = smoother)
+WLS_SIGMA       = 1.5       # WLS filter edge sensitivity
 # ───────────────────────────────────────────────────────────────────────────────
 
 
@@ -47,19 +49,33 @@ os.makedirs(CAPTURE_DIR, exist_ok=True)
 print(f"[i] Loading calibration from '{CALIB_FILE}' ...")
 map1x, map1y, map2x, map2y, Q = load_calibration(CALIB_FILE)
 
+clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+
 matcher = cv2.StereoSGBM_create(
     minDisparity=0,
     numDisparities=NUM_DISPARITIES,
     blockSize=BLOCK_SIZE,
-    P1=8  * BLOCK_SIZE ** 2,
-    P2=32 * BLOCK_SIZE ** 2,
-    disp12MaxDiff=1,
+    P1=8  * 3 * BLOCK_SIZE ** 2,
+    P2=32 * 3 * BLOCK_SIZE ** 2,
+    disp12MaxDiff=2,
     uniquenessRatio=10,
-    speckleWindowSize=200,
-    speckleRange=64,
+    speckleWindowSize=100,
+    speckleRange=2,
     preFilterCap=63,
     mode=cv2.STEREO_SGBM_MODE_SGBM_3WAY,
 )
+
+# WLS filter fills holes left by SGBM (requires opencv-contrib)
+try:
+    right_matcher = cv2.ximgproc.createRightMatcher(matcher)
+    wls_filter = cv2.ximgproc.createDisparityWLSFilter(matcher_left=matcher)
+    wls_filter.setLambda(WLS_LAMBDA)
+    wls_filter.setSigmaColor(WLS_SIGMA)
+    USE_WLS = True
+    print("[i] WLS filter enabled.")
+except AttributeError:
+    USE_WLS = False
+    print("[!] cv2.ximgproc not available — WLS filter disabled.")
 
 print("[i] Initialising cameras ...")
 pL, _ = initialize_camera_jetson(LEFT_DEVICE,  W, H, EXPOSURE, GAIN, FRAME_RATE)
@@ -89,13 +105,23 @@ while True:
     cv2.imshow("Rectified", both_bgr)
 
     # ── Disparity / depth view ──────────────────────────────────────────────
-    disp = matcher.compute(rectL, rectR).astype(np.float32) / 16.0
-    valid = disp > 0
-    disp_vis = np.zeros(disp.shape, dtype=np.uint8)  # invalid pixels stay black
+    dispL = matcher.compute(rectL, rectR)
+
+    if USE_WLS:
+        dispR = right_matcher.compute(rectR, rectL)
+        disp = wls_filter.filter(dispL, rectL, disparity_map_right=dispR)
+    else:
+        disp = dispL
+
+    # SGBM returns 16x fixed-point; divide to get real pixels, mask invalids
+    disp_f = disp.astype(np.float32) / 16.0
+    valid = disp_f >= 1.0
+    disp_vis = np.zeros(disp_f.shape, dtype=np.uint8)
     if valid.any():
-        mn, mx = disp[valid].min(), disp[valid].max()
+        mn, mx = disp_f[valid].min(), disp_f[valid].max()
         if mx > mn:
-            disp_vis[valid] = ((disp[valid] - mn) / (mx - mn) * 255).astype(np.uint8)
+            disp_vis[valid] = ((disp_f[valid] - mn) / (mx - mn) * 255).astype(np.uint8)
+
     cv2.imshow("Depth", cv2.applyColorMap(disp_vis, cv2.COLORMAP_MAGMA))
 
     key = cv2.waitKey(1) & 0xFF
