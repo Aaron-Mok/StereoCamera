@@ -15,6 +15,26 @@ def bin_bayer_2x2(bayer: np.ndarray) -> np.ndarray:
     return out
 
 
+def bin_2x2(img: np.ndarray) -> np.ndarray:
+    """2x2 bin any single-channel image by averaging each 2x2 block.
+    Input:  (H, W) uint16
+    Output: (H//2, W//2) uint16
+    """
+    return ((img[0::2, 0::2].astype(np.uint32) + img[0::2, 1::2]
+             + img[1::2, 0::2] + img[1::2, 1::2]) >> 2).astype(np.uint16)
+
+
+def bin_4x4(img: np.ndarray) -> np.ndarray:
+    """4x4 bin any single-channel image by averaging each 4x4 block.
+    Input:  (H, W) uint16
+    Output: (H//4, W//4) uint16
+    """
+    return ((img[0::4, 0::4].astype(np.uint32) + img[0::4, 1::4] + img[0::4, 2::4] + img[0::4, 3::4]
+             + img[1::4, 0::4] + img[1::4, 1::4] + img[1::4, 2::4] + img[1::4, 3::4]
+             + img[2::4, 0::4] + img[2::4, 1::4] + img[2::4, 2::4] + img[2::4, 3::4]
+             + img[3::4, 0::4] + img[3::4, 1::4] + img[3::4, 2::4] + img[3::4, 3::4]) >> 4).astype(np.uint16)
+
+
 def extract_green(bayer: np.ndarray) -> np.ndarray:
     """Extract green channel from a BGGR Bayer image.
     Input:  (H, W) uint16 Bayer BGGR

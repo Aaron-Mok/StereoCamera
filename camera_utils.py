@@ -135,7 +135,7 @@ def initialize_camera_jetson(device, W=3840, H=2160, exposure=33000, gain=200, f
     p = subprocess.Popen([
         "v4l2-ctl", "-d", device,
         "--stream-mmap", "--stream-count=0", "--stream-to=-"
-    ], stdout=subprocess.PIPE, bufsize=frame_bytes)
+    ], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=frame_bytes)
 
     return p, frame_bytes
 

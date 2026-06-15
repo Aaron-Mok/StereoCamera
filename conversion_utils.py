@@ -23,6 +23,10 @@ def bit16_to_normalize01(img_8bit):
     img_normalized = img_8bit.astype(np.float32) / 65535.0
     return img_normalized
 
+def bit16_to_bit8(img_16bit):
+    """Scale a uint16 image to uint8 by dividing by 65535 and multiplying by 255."""
+    return (img_16bit.astype(np.float32) / 65535.0 * 255.0).astype(np.uint8)
+
 def normalize01_to_16bit(img_normalized):
     """
     Convert an image with values in [0, 1] (normalized float32/float64)
