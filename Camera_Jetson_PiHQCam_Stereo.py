@@ -24,7 +24,7 @@ CAPTURE_DIR = "captures"
 NUM_DISPARITIES = 16 * 10   # must be multiple of 16
 BLOCK_SIZE      = 9         # 5-11 recommended; smaller = more detail, noisier
 WLS_LAMBDA      = 8000      # WLS filter smoothness (higher = smoother)
-WLS_SIGMA       = 1.5       # WLS filter edge sensitivity
+WLS_SIGMA       = 5       # WLS filter edge sensitivity
 # ───────────────────────────────────────────────────────────────────────────────
 
 
