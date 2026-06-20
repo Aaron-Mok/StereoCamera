@@ -21,10 +21,8 @@ FRAME_RATE = 30000000
 CALIB_FILE  = "Calibration_output/Stereo_params_20260614_Jetson.yml"
 CAPTURE_DIR = "captures"
 
-NUM_DISPARITIES = 16 * 10   # must be multiple of 16
-BLOCK_SIZE      = 9         # 5-11 recommended; smaller = more detail, noisier
-WLS_LAMBDA      = 8000      # WLS filter smoothness (higher = smoother)
-WLS_SIGMA       = 5       # WLS filter edge sensitivity
+NUM_DISPARITIES = 16 * 5   # must be multiple of 16
+BLOCK_SIZE      = 5         # must be odd; 5-21 for StereoBM
 # ───────────────────────────────────────────────────────────────────────────────
 
 
@@ -49,33 +47,16 @@ os.makedirs(CAPTURE_DIR, exist_ok=True)
 print(f"[i] Loading calibration from '{CALIB_FILE}' ...")
 map1x, map1y, map2x, map2y, Q = load_calibration(CALIB_FILE)
 
-clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+# Upload rectification maps to GPU once at startup
+gpu_map1x = cv2.cuda_GpuMat(); gpu_map1x.upload(map1x)
+gpu_map1y = cv2.cuda_GpuMat(); gpu_map1y.upload(map1y)
+gpu_map2x = cv2.cuda_GpuMat(); gpu_map2x.upload(map2x)
+gpu_map2y = cv2.cuda_GpuMat(); gpu_map2y.upload(map2y)
 
-matcher = cv2.StereoSGBM_create(
-    minDisparity=0,
-    numDisparities=NUM_DISPARITIES,
-    blockSize=BLOCK_SIZE,
-    P1=8  * 3 * BLOCK_SIZE ** 2,
-    P2=32 * 3 * BLOCK_SIZE ** 2,
-    disp12MaxDiff=2,
-    uniquenessRatio=10,
-    speckleWindowSize=100,
-    speckleRange=2,
-    preFilterCap=63,
-    mode=cv2.STEREO_SGBM_MODE_SGBM_3WAY,
-)
-
-# WLS filter fills holes left by SGBM (requires opencv-contrib)
-try:
-    right_matcher = cv2.ximgproc.createRightMatcher(matcher)
-    wls_filter = cv2.ximgproc.createDisparityWLSFilter(matcher_left=matcher)
-    wls_filter.setLambda(WLS_LAMBDA)
-    wls_filter.setSigmaColor(WLS_SIGMA)
-    USE_WLS = True
-    print("[i] WLS filter enabled.")
-except AttributeError:
-    USE_WLS = False
-    print("[!] cv2.ximgproc not available — WLS filter disabled.")
+# CUDA StereoBM — faster than SGBM on GPU; WLS not compatible with CUDA matcher
+matcher = cv2.cuda.createStereoBM(numDisparities=NUM_DISPARITIES, blockSize=BLOCK_SIZE)
+stream = cv2.cuda.Stream()
+print("[i] Using CUDA StereoBM (WLS disabled).")
 
 print("[i] Initialising cameras ...")
 pL, _ = initialize_camera_jetson(LEFT_DEVICE,  W, H, EXPOSURE, GAIN, FRAME_RATE)
@@ -95,8 +76,16 @@ while True:
     grayL = raw_to_gray8(raw_L)
     grayR = raw_to_gray8(raw_R)
 
-    rectL = cv2.remap(grayL, map1x, map1y, cv2.INTER_LINEAR)
-    rectR = cv2.remap(grayR, map2x, map2y, cv2.INTER_LINEAR)
+    # Upload to GPU and remap
+    gpu_grayL = cv2.cuda_GpuMat(); gpu_grayL.upload(grayL)
+    gpu_grayR = cv2.cuda_GpuMat(); gpu_grayR.upload(grayR)
+
+    gpu_rectL = cv2.cuda.remap(gpu_grayL, gpu_map1x, gpu_map1y, cv2.INTER_LINEAR)
+    gpu_rectR = cv2.cuda.remap(gpu_grayR, gpu_map2x, gpu_map2y, cv2.INTER_LINEAR)
+
+    # Download rectified frames for display and capture
+    rectL = gpu_rectL.download()
+    rectR = gpu_rectR.download()
 
     # ── Rectified view — horizontal lines verify alignment ──────────────────
     both_bgr = cv2.cvtColor(np.hstack([rectL, rectR]), cv2.COLOR_GRAY2BGR)
@@ -104,16 +93,11 @@ while True:
         cv2.line(both_bgr, (0, y), (both_bgr.shape[1] - 1, y), (0, 255, 0), 1)
     cv2.imshow("Rectified", both_bgr)
 
-    # ── Disparity / depth view ──────────────────────────────────────────────
-    dispL = matcher.compute(rectL, rectR)
+    # ── Disparity on GPU, download for post-processing ──────────────────────
+    gpu_disp = matcher.compute(gpu_rectL, gpu_rectR, stream)
+    disp = gpu_disp.download()
 
-    if USE_WLS:
-        dispR = right_matcher.compute(rectR, rectL)
-        disp = wls_filter.filter(dispL, rectL, disparity_map_right=dispR)
-    else:
-        disp = dispL
-
-    # SGBM returns 16x fixed-point; divide to get real pixels, mask invalids
+    # StereoBM returns 16x fixed-point; divide to get real pixels, mask invalids
     disp_f = disp.astype(np.float32) / 16.0
     valid = disp_f >= 1.0
     disp_vis = np.zeros(disp_f.shape, dtype=np.uint8)
