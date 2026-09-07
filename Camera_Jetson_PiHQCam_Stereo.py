@@ -28,6 +28,8 @@ UNIQUENESS_RATIO = 20       # reject match if 2nd-best is within this % of best 
 PREFILTER_CAP    = 31       # clamp prefilter response; 1-63
 SPECKLE_WINDOW   = 0      # min area (px) to keep a disparity region; 0=off
 SPECKLE_RANGE    = 32       # max disparity variation within a speckle region
+DEPTH_MIN_M      = 0.3      # clip range for depth colormap (metres)
+DEPTH_MAX_M      = 5.0
 # ───────────────────────────────────────────────────────────────────────────────
 
 
@@ -44,13 +46,16 @@ def load_calibration(path):
     map2y = fs.getNode("map2y").mat()
     Q     = fs.getNode("Q").mat()
     fs.release()
-    return map1x, map1y, map2x, map2y, Q
+    focal    = Q[2, 3]           # focal length in pixels (from rectified projection)
+    baseline = 1.0 / abs(Q[3, 2])  # baseline in metres
+    return map1x, map1y, map2x, map2y, Q, focal, baseline
 
 
 os.makedirs(CAPTURE_DIR, exist_ok=True)
 
 print(f"[i] Loading calibration from '{CALIB_FILE}' ...")
-map1x, map1y, map2x, map2y, Q = load_calibration(CALIB_FILE)
+map1x, map1y, map2x, map2y, Q, FOCAL_PX, BASELINE_M = load_calibration(CALIB_FILE)
+print(f"[i] focal={FOCAL_PX:.1f} px  baseline={BASELINE_M*100:.1f} cm")
 
 # Upload rectification maps to GPU once at startup
 gpu_map1x = cv2.cuda_GpuMat(); gpu_map1x.upload(map1x)
@@ -110,18 +115,25 @@ while True:
     gpu_disp = matcher.compute(gpu_rectL, gpu_rectR, stream)
     disp = gpu_disp.download()
 
-    # StereoBM returns 16x fixed-point; divide to get real pixels, mask invalids
-    # Normalize against fixed range so colors are physically consistent across frames:
-    #   disp=1 (far, ~5 m) → 0 (blue in TURBO)
-    #   disp=NUM_DISPARITIES (near, ~0.8 m) → 255 (red in TURBO)
-    # disp_f = disp.astype(np.float32) / 16.0
-    disp_f = disp
-    valid = disp_f >= 0.0
-    disp_vis = np.zeros(disp_f.shape, dtype=np.uint8)
-    disp_vis[valid] = disp_f[valid]
+    # StereoBM returns 16x fixed-point; divide by 16 to get real pixel disparity
+    disp_f   = disp.astype(np.float32)
+    valid    = disp_f > 0.0
 
-    depth_display = cv2.rotate(cv2.resize(cv2.applyColorMap(disp_vis, cv2.COLORMAP_TURBO), (960, 540)), cv2.ROTATE_180)
-    cv2.imshow("Depth", depth_display)
+    # ── Disparity visualisation (raw disparity, uint8 clipped) ──────────────
+    disp_vis = np.zeros(disp_f.shape, dtype=np.uint8)
+    disp_vis[valid] = np.clip(disp_f[valid], 0, 255)
+    disp_display = cv2.rotate(cv2.resize(cv2.applyColorMap(disp_vis, cv2.COLORMAP_TURBO), (960, 540)), cv2.ROTATE_180)
+    cv2.imshow("Disparity", disp_display)
+
+    # ── Depth map: depth = focal * baseline / disparity ─────────────────────
+    depth_m = np.zeros(disp_f.shape, dtype=np.float32)
+    depth_m[valid] = (FOCAL_PX * BASELINE_M) / disp_f[valid]
+    depth_clipped = np.clip(depth_m, DEPTH_MIN_M, DEPTH_MAX_M)
+    # Map DEPTH_MAX_M → 0 (blue/far) and DEPTH_MIN_M → 255 (red/near)
+    depth_norm = ((DEPTH_MAX_M - depth_clipped) / (DEPTH_MAX_M - DEPTH_MIN_M) * 255).astype(np.uint8)
+    depth_norm[~valid] = 0
+    depth_display = cv2.rotate(cv2.resize(cv2.applyColorMap(depth_norm, cv2.COLORMAP_TURBO), (960, 540)), cv2.ROTATE_180)
+    cv2.imshow("Depth (m)", depth_display)
 
     key = cv2.waitKey(1) & 0xFF
     if key == ord('q'):
