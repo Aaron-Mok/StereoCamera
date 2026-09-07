@@ -182,3 +182,5 @@ cython_debug/
 
 # Large calibration output files (>100 MB, exceeds GitHub limit)
 Calibration_output/20260620_stereo_params.yml
+# Generated calibration output (remap tables make these >100 MB)
+/stereo_params.yml
