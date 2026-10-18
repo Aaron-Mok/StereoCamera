@@ -60,8 +60,15 @@ closer than that may have no usable match.
 
 Pressing `c` also saves an upright `depth_color_<timestamp>.png`, unrotated
 `depth_m_<timestamp>.npy` (float metres, zero for missing), and
-`settings_<timestamp>.json`. The legacy `depth_<timestamp>.png` remains an 8-bit
-disparity image.
+`settings_<timestamp>.json`. The original captures used an 8-bit pixel-disparity
+image for `depth_<timestamp>.png`. With adjustable search ranges, new files with
+that name are scaled previews; use `disparity_px_<timestamp>.npy` for full-resolution
+pixel disparities. The JSON records the preview scale and matcher settings.
+
+For the subsequent close-range and horizontal-streak improvements, see
+[close_range.md](close_range.md).
+For GPU semi-global matching, timing results, and comparisons on the saved room
+and hand pairs, see [cuda_sgm.md](cuda_sgm.md).
 
 ## Verification
 

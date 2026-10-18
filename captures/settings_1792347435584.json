@@ -1,0 +1,14 @@
+{
+  "calibration": "stereo_params_charuco.yml",
+  "matcher": "sgbm",
+  "matching_scale": 0.5,
+  "num_disparities_full_resolution": 640,
+  "disparity_preview_max_px": 638.0,
+  "wls": false,
+  "reference_camera": "right",
+  "depth_m_orientation": "sensor",
+  "invalid_depth_m": 0,
+  "depth_png_contents": "disparity preview scaled to 0..255",
+  "disparity_px_orientation": "sensor",
+  "disparity_px_units": "full-resolution pixels; nonpositive is invalid"
+}

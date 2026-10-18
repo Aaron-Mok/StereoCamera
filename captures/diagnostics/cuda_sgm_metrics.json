@@ -1,0 +1,26 @@
+[
+  {
+    "scene": "room",
+    "matcher": "CPU SGBM",
+    "processing_ms": 187.33,
+    "positive_coverage_common_roi": 64.47
+  },
+  {
+    "scene": "room",
+    "matcher": "CUDA SGM",
+    "processing_ms": 43.78,
+    "positive_coverage_common_roi": 47.89
+  },
+  {
+    "scene": "hand",
+    "matcher": "CPU SGBM",
+    "processing_ms": 199.66,
+    "positive_coverage_common_roi": 51.64
+  },
+  {
+    "scene": "hand",
+    "matcher": "CUDA SGM",
+    "processing_ms": 27.31,
+    "positive_coverage_common_roi": 40.95
+  }
+]

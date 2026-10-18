@@ -15,6 +15,7 @@ import cv2
 import numpy as np
 import time
 import math
+from datetime import datetime
 
 from ISP.binning import extract_green
 from camera_utils import initialize_camera_jetson, capture_raw_frame_jetson
@@ -62,7 +63,8 @@ def main():
 
         now = time.monotonic()
         if next_capture is not None and now >= next_capture:
-            ts = time.time_ns()
+            # Use one local date/time suffix for both images in the pair.
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             lp = os.path.join(OUT_DIR, f"left_{ts}.png")
             rp = os.path.join(OUT_DIR, f"right_{ts}.png")
             saved_left = cv2.imwrite(lp, greenL)
