@@ -13,21 +13,17 @@ Usage:
 import sys
 import os
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import cv2
 import numpy as np
 
-# ─── Board specification ───────────────────────────────────────────────────────
-SQUARES_X      = 10         # squares across
-SQUARES_Y      = 6          # squares down
-SQUARE_MM      = 80.0       # checker square size
-MARKER_RATIO   = 0.75       # marker size as a fraction of the square
+# The board geometry lives in charuco_common so the printed pattern and the
+# detector that reads it can never disagree.
+from charuco_common import (SQUARES_X, SQUARES_Y, SQUARE_MM, MARKER_RATIO,
+                            DICT_NAME, board_for_print, dictionary)
 
-# 4x4 markers carry their bits in 6 cells rather than 7, so each bit is larger
-# at a given marker size — that decode margin is what pays for the smaller
-# squares, and smaller squares are what keep enough corners alive in the
-# partial views this board exists to tolerate.
-DICT_NAME      = "DICT_4X4_50"
-
+# ─── Sheet specification ───────────────────────────────────────────────────────
 SHEET_W_MM     = 914.4      # 36 in — landscape
 SHEET_H_MM     = 609.6      # 24 in
 
@@ -38,10 +34,7 @@ MM_PER_PT = 25.4 / 72.0
 
 
 def make_board():
-    d = cv2.aruco.getPredefinedDictionary(getattr(cv2.aruco, DICT_NAME))
-    board = cv2.aruco.CharucoBoard(
-        (SQUARES_X, SQUARES_Y), SQUARE_MM, SQUARE_MM * MARKER_RATIO, d)
-    return board, d
+    return board_for_print(), dictionary()
 
 
 def square_px():
@@ -51,8 +44,7 @@ def square_px():
     square, so the square must divide evenly by the bit count *and* leave an
     even margin around the marker.
     """
-    bits = cv2.aruco.getPredefinedDictionary(
-        getattr(cv2.aruco, DICT_NAME)).markerSize + 2
+    bits = dictionary().markerSize + 2
     for px in range(bits * 2, 4096, 2):
         marker = px * MARKER_RATIO
         if marker % bits == 0 and (px - marker) % 2 == 0:

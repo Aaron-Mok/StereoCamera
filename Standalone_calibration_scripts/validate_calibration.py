@@ -17,7 +17,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 import cv2
 import numpy as np
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from stereo_calibrate_offline import load_pairs, make_object_points, find_corners
+import charuco_common as cb
 
 # ─── Settings ──────────────────────────────────────────────────────────────────
 CB_COLS       = 8
@@ -50,11 +53,49 @@ def read_calib(path):
                              "R1", "R2", "P1", "P2", "Q")}
     # Image size comes from the remap tables — always present, never ambiguous.
     c["size"] = (get("map1x").shape[1], get("map1x").shape[0])
+    # Which board produced this calibration decides how to re-detect the pairs.
+    node = fs.getNode("board_type")
+    c["board_type"] = node.string() if not node.empty() else "checkerboard"
     fs.release()
     missing = [k for k, v in c.items() if v is None]
     if missing:
         raise ValueError(f"'{path}' is missing: {', '.join(missing)}")
     return c
+
+
+def collect_corners_charuco(pairs):
+    """Same contract as collect_corners, for an id-carrying ChArUco board.
+
+    Only corners both cameras saw are returned — every metric here compares a
+    left corner against its right counterpart, so an unmatched corner has
+    nothing to be compared with, however well it was detected.
+    """
+    board = cb.board_for_calib()
+    detector = cb.make_detector(board)
+    obj, ptsL, ptsR, names = [], [], [], []
+    rejected = []
+    for lp, rp in pairs:
+        gl = cv2.imread(lp, cv2.IMREAD_GRAYSCALE)
+        gr = cv2.imread(rp, cv2.IMREAD_GRAYSCALE)
+        if gl is None or gr is None:
+            rejected.append((os.path.basename(lp), "unreadable"))
+            continue
+        cL, iL = cb.detect(gl, detector)
+        cR, iR = cb.detect(gr, detector)
+        if iL is None or iR is None:
+            side = "left" if iL is None else "right"
+            rejected.append((os.path.basename(lp), f"no corners ({side})"))
+            continue
+        m = cb.match_pair(cL, iL, cR, iR, board)
+        if m is None:
+            rejected.append((os.path.basename(lp), "too few/collinear common corners"))
+            continue
+        o, l, r = m
+        obj.append(o)
+        ptsL.append(l)
+        ptsR.append(r)
+        names.append(os.path.basename(lp))
+    return obj, ptsL, ptsR, names, rejected
 
 
 def collect_corners(pairs, pattern_size):
@@ -157,9 +198,14 @@ def main():
     W, H = c["size"]
 
     pairs = load_pairs(pairs_dir)
-    obj, ptsL, ptsR, names, rejected = collect_corners(pairs, pattern_size)
+    if c["board_type"] == "charuco":
+        print(f"[i] Board       : {cb.describe()}")
+        obj, ptsL, ptsR, names, rejected = collect_corners_charuco(pairs)
+    else:
+        obj, ptsL, ptsR, names, rejected = collect_corners(pairs, pattern_size)
+    n_corners = sum(len(o) for o in obj)
     print(f"[i] {len(obj)}/{len(pairs)} pairs detected in both views "
-          f"({len(obj) * CB_COLS * CB_ROWS} corners)")
+          f"({n_corners} corners)")
     for n, why in rejected:
         print(f"    rejected: {n} — {why}")
     if len(obj) < 3:

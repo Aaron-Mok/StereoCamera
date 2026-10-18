@@ -1,0 +1,66 @@
+[
+  {
+    "name": "saved_gpu",
+    "coverage": 24.4,
+    "feature_count": 97,
+    "matched_features": 48,
+    "feature_error_median": 0.985931396484375,
+    "seconds": 0
+  },
+  {
+    "name": "gpu_original",
+    "coverage": 24.4,
+    "feature_count": 97,
+    "matched_features": 48,
+    "feature_error_median": 0.985931396484375,
+    "seconds": 0.102
+  },
+  {
+    "name": "gpu_texture3",
+    "coverage": 36.65,
+    "feature_count": 97,
+    "matched_features": 50,
+    "feature_error_median": 0.985931396484375,
+    "seconds": 0.091
+  },
+  {
+    "name": "gpu_block9",
+    "coverage": 28.74,
+    "feature_count": 97,
+    "matched_features": 55,
+    "feature_error_median": 0.53985595703125,
+    "seconds": 0.127
+  },
+  {
+    "name": "gpu_block15",
+    "coverage": 29.46,
+    "feature_count": 97,
+    "matched_features": 79,
+    "feature_error_median": 0.53985595703125,
+    "seconds": 0.094
+  },
+  {
+    "name": "gpu_raw9",
+    "coverage": 26.73,
+    "feature_count": 97,
+    "matched_features": 70,
+    "feature_error_median": 0.60931396484375,
+    "seconds": 0.097
+  },
+  {
+    "name": "sgbm_1",
+    "coverage": 43.59,
+    "feature_count": 97,
+    "matched_features": 90,
+    "feature_error_median": 0.4471588134765625,
+    "seconds": 0.894
+  },
+  {
+    "name": "sgbm_0.5",
+    "coverage": 68.85,
+    "feature_count": 97,
+    "matched_features": 97,
+    "feature_error_median": 0.52264404296875,
+    "seconds": 0.143
+  }
+]

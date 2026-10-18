@@ -184,3 +184,4 @@ cython_debug/
 Calibration_output/20260620_stereo_params.yml
 # Generated calibration output (remap tables make these >100 MB)
 /stereo_params.yml
+/stereo_params_charuco.yml
