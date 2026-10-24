@@ -120,6 +120,12 @@ class StereoDepthTests(unittest.TestCase):
                      "Set STEREO_TEST_CUDA=1 on a machine with CUDA to run GPU integration")
 class CudaSGMTests(unittest.TestCase):
     def test_viewer_captures_cuda_result_with_saved_camera_frames(self):
+        self._check_viewer_capture(depth_only=False)
+
+    def test_depth_only_skips_extra_previews_and_preserves_captures(self):
+        self._check_viewer_capture(depth_only=True)
+
+    def _check_viewer_capture(self, depth_only):
         rng = np.random.default_rng(23)
         right = rng.integers(0, 256, (240, 1280), dtype=np.uint8)
         left = np.zeros_like(right)
@@ -128,6 +134,9 @@ class CudaSGMTests(unittest.TestCase):
         q = np.zeros((4, 4), dtype=np.float64)
         q[2, 3], q[3, 2] = 1282.9049, -4.98832216
         processes = []
+        argv = ["viewer", "--matcher", "sgm", "--num-disparities", "640"]
+        if depth_only:
+            argv.append("--depth-only")
 
         def initialize(device, *_):
             p = SimpleNamespace(frame=left if device == viewer.LEFT_DEVICE else right,
@@ -141,10 +150,14 @@ class CudaSGMTests(unittest.TestCase):
              patch.object(viewer, "initialize_camera_jetson", side_effect=initialize), \
              patch.object(viewer, "capture_raw_frame_jetson", side_effect=lambda p, *_: p.frame), \
              patch.object(viewer, "raw_to_gray8", side_effect=lambda frame: frame), \
-             patch.object(viewer.cv2, "imshow"), \
-             patch.object(viewer.cv2, "waitKey", side_effect=[ord('c'), ord('q')]), \
+             patch.object(viewer, "depth_from_disparity", wraps=depth_from_disparity) as depth_fn, \
+             patch.object(viewer, "colorize_depth", wraps=colorize_depth) as color_fn, \
+             patch.object(viewer, "disparity_preview", wraps=disparity_preview) as preview_fn, \
+             patch.object(viewer.cv2.cuda, "cvtColor", wraps=cv2.cuda.cvtColor) as camera_color_fn, \
+             patch.object(viewer.cv2, "imshow") as display, \
+             patch.object(viewer.cv2, "waitKey", side_effect=[-1, ord('c'), ord('q')]), \
              patch.object(viewer.cv2, "destroyAllWindows"), \
-             patch.object(viewer.sys, "argv", ["viewer", "--matcher", "sgm", "--num-disparities", "640"]), \
+             patch.object(viewer.sys, "argv", argv), \
              redirect_stdout(StringIO()):
             viewer.main()
             settings = list(Path(directory).glob('settings_*.json'))
@@ -152,16 +165,45 @@ class CudaSGMTests(unittest.TestCase):
             self.assertRegex(settings[0].name, r'^settings_\d{8}_\d{6}_\d{6}\.json$')
             metadata = json.loads(settings[0].read_text())
             self.assertEqual(metadata["matcher"], "sgm")
+            self.assertEqual(metadata["depth_only"], depth_only)
             self.assertEqual(metadata["reference_camera"], "right")
             self.assertEqual(metadata["matching_scale"], 0.4)
             self.assertEqual(metadata["num_disparities_matching"], 256)
+            self.assertEqual(metadata["depth_processing_size"], [512, 96])
             self.assertFalse(metadata["wls"])
+            # All live frames, including the captured one, process depth/colors
+            # at the matching size instead of expanding first.
+            self.assertEqual(depth_fn.call_count, 3)
+            self.assertEqual(color_fn.call_count, 3)
+            for call in depth_fn.call_args_list + color_fn.call_args_list:
+                self.assertEqual(call.args[0].shape, (96, 512))
+            # Depth-only skips producing the extra previews, not just imshow.
+            self.assertEqual(preview_fn.call_count, 1 if depth_only else 3)
+            self.assertEqual(camera_color_fn.call_count, 0 if depth_only else 6)
+            windows = {call.args[0] for call in display.call_args_list}
+            self.assertEqual(windows, {'Depth (m)'} if depth_only else
+                             {'Rectified', 'Disparity', 'Depth (m)'})
             tag = settings[0].stem.removeprefix('settings_')
             np.testing.assert_array_equal(cv2.imread(str(Path(directory, f'rectR_{tag}.png')), 0), right)
             np.testing.assert_array_equal(cv2.imread(str(Path(directory, f'rectL_{tag}.png')), 0), left)
             depth = np.load(Path(directory, f'depth_m_{tag}.npy'))
             self.assertAlmostEqual(float(np.median(depth[40:-40, 700:-80])), 257.18164 / 480, delta=0.02)
-            self.assertEqual(np.load(Path(directory, f'disparity_px_{tag}.npy')).shape, right.shape)
+            disparity = np.load(Path(directory, f'disparity_px_{tag}.npy'))
+            self.assertEqual(disparity.shape, right.shape)
+            native_disp = depth_fn.call_args_list[1].args[0]
+            np.testing.assert_array_equal(disparity, cv2.resize(
+                native_disp, (1280, 240), interpolation=cv2.INTER_NEAREST))
+            # Saved depth/preview must equal the former full-resolution pipeline,
+            # including black holes and metric units at the close synthetic plane.
+            expected_depth, valid = depth_from_disparity(disparity, q, True)
+            np.testing.assert_array_equal(depth, expected_depth)
+            saved_preview = cv2.imread(str(Path(directory, f'depth_{tag}.png')), 0)
+            np.testing.assert_array_equal(saved_preview, disparity_preview(disparity, valid, 637.5))
+            depth_views = [call.args[1] for call in display.call_args_list
+                           if call.args[0] == 'Depth (m)']
+            self.assertEqual(depth_views[0].shape, (540, 960, 3))
+            np.testing.assert_array_equal(
+                cv2.imread(str(Path(directory, f'depth_color_{tag}.png'))), depth_views[1])
         for p in processes:
             p.terminate.assert_called_once()
 
@@ -176,16 +218,22 @@ class CudaSGMTests(unittest.TestCase):
                 gpu_first = cv2.cuda_GpuMat(); gpu_first.upload(first)
                 gpu_second = cv2.cuda_GpuMat(); gpu_second.upload(second)
                 config = cuda_sgm_config((1280, 240), requested)
-                disparity = compute_cuda_sgm(make_cuda_sgm(config), gpu_first, gpu_second, config)
+                matcher = make_cuda_sgm(config)
+                disparity = compute_cuda_sgm(matcher, gpu_first, gpu_second, config)
                 self.assertEqual(disparity.shape, first.shape)
-                roi = disparity[40:-40, requested + 60:-80]
-                self.assertGreater(np.mean(roi > 0), 0.9)
-                self.assertAlmostEqual(float(np.median(roi)), shift, delta=1.0)
+                native = compute_cuda_sgm(matcher, gpu_first, gpu_second, config,
+                                          full_resolution=False)
+                self.assertEqual(native.shape, config["size"][::-1])
                 q = np.zeros((4, 4), dtype=np.float64)
                 q[2, 3], q[3, 2] = 1282.9049, -4.98832216 if reverse else 4.98832216
-                depth, _ = depth_from_disparity(disparity, q, reverse)
-                self.assertAlmostEqual(float(np.median(depth[40:-40, requested + 60:-80])),
-                                       257.18164 / shift, delta=0.02)
+                for output in (disparity, cv2.resize(native, (1280, 240),
+                                                    interpolation=cv2.INTER_NEAREST)):
+                    roi = output[40:-40, requested + 60:-80]
+                    self.assertGreater(np.mean(roi > 0), 0.9)
+                    self.assertAlmostEqual(float(np.median(roi)), shift, delta=1.0)
+                    depth, _ = depth_from_disparity(output, q, reverse)
+                    self.assertAlmostEqual(float(np.median(depth[40:-40, requested + 60:-80])),
+                                           257.18164 / shift, delta=0.02)
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ search was 0–127 matching pixels, or approximately 0–254 original pixels.
 The viewer now accepts a wider search range and optional edge-aware WLS filtering:
 
 ```bash
-python3 Camera_Jetson_PiHQCam_Stereo.py --calibration stereo_params_charuco.yml --matcher sgbm --num-disparities 640 --wls
+python3 Camera_Jetson_PiHQCam_Stereo.py --calibration Calibration_output/stereo_params_charuco.yml --matcher sgbm --num-disparities 640 --wls
 ```
 
 At half resolution this searches 320 disparity values, reaching approximately

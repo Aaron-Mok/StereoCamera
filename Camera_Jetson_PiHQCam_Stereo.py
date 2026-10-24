@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from datetime import datetime
 import argparse
 import json
+import time
 import numpy as np
 import cv2
 from ISP.binning import extract_green
@@ -20,7 +21,7 @@ EXPOSURE   = 33000
 GAIN       = 200
 FRAME_RATE = 30000000
 
-CALIB_FILE  = "Calibration_output/20260620_stereo_params.yml"
+CALIB_FILE  = "Calibration_output/stereo_params_charuco.yml"
 CAPTURE_DIR = "captures"
 
 NUM_DISPARITIES  = 16 * 16  # full-resolution search range; nearest depth is about focal*baseline/255
@@ -132,8 +133,12 @@ def make_cuda_sgm(config):
         P1=10, P2=120, uniquenessRatio=10, mode=cv2.STEREO_SGBM_MODE_HH4)
 
 
-def compute_cuda_sgm(matcher, first, second, config):
-    """Match rectified GPU images and return full-resolution pixel disparities."""
+def compute_cuda_sgm(matcher, first, second, config, *, full_resolution=True):
+    """Return original-pixel disparities, optionally keeping the matching grid.
+
+    full_resolution controls array dimensions only. Disparity values always use
+    original image pixels so the calibration's Q matrix remains valid.
+    """
     if first.size() != config["image_size"] or second.size() != config["image_size"]:
         raise ValueError("Rectified image dimensions do not match the CUDA SGM configuration")
     small_first = cv2.cuda.resize(first, config["size"], interpolation=cv2.INTER_LINEAR)
@@ -141,7 +146,9 @@ def compute_cuda_sgm(matcher, first, second, config):
     raw = matcher.compute(small_first, small_second).download()
     # Unlike CUDA BM's uint8 output, CUDA SGM returns signed 16x fixed point.
     disparity = raw.astype(np.float32) / (16 * config["scale"])
-    return cv2.resize(disparity, config["image_size"], interpolation=cv2.INTER_NEAREST)
+    if full_resolution:
+        disparity = cv2.resize(disparity, config["image_size"], interpolation=cv2.INTER_NEAREST)
+    return disparity
 
 
 def depth_from_disparity(disparity, Q, reverse_match):
@@ -183,6 +190,8 @@ def main():
                         help="Full-resolution search range, a multiple of 16 (default: 256; try 640 for close objects)")
     parser.add_argument("--wls", action="store_true",
                         help="Filter SGBM streaks using image edges and reverse-match confidence (slower)")
+    parser.add_argument("--depth-only", action="store_true",
+                        help="Show only depth; skip camera and disparity previews to reduce processing")
     args = parser.parse_args()
     if args.num_disparities <= 0 or args.num_disparities % 16:
         parser.error("--num-disparities must be a positive multiple of 16")
@@ -221,6 +230,7 @@ def main():
         mw, mh = sgm_config["size"]
         print(f"[i] Using CUDA StereoSGM at {mw}x{mh} ({matching_scale:g}x), "
               f"{sgm_config['num_disparities']} matching disparities; WLS off.")
+        print(f"[i] Depth and coloring stay at {mw}x{mh}; full-size arrays are generated on capture.")
     else:
         matcher = cv2.cuda.createStereoBM(numDisparities=args.num_disparities, blockSize=BLOCK_SIZE)
         matcher.setPreFilterType(cv2.StereoBM_PREFILTER_XSOBEL)
@@ -250,8 +260,13 @@ def main():
     pR, _ = initialize_camera_jetson(RIGHT_DEVICE, W, H, EXPOSURE, GAIN, FRAME_RATE)
 
     print("[i] Running — press 'q' to quit, 'c' to capture.")
+    if args.depth_only:
+        print("[i] Depth-only display; 'c' still saves the complete capture set.")
 
     capture_count = 1
+    fps = None
+    fps_frames = 0
+    fps_started = time.perf_counter()
 
     while True:
         raw_L = capture_raw_frame_jetson(pL, W, H)
@@ -275,14 +290,16 @@ def main():
             rectL = gpu_rectL.download()
             rectR = gpu_rectR.download()
 
-        # ── Rectified view — resize to 960×540 each on GPU → 1920×540 side-by-side
-        bgrL = cv2.cuda.cvtColor(cv2.cuda.resize(gpu_rectL, (960, 540)), cv2.COLOR_GRAY2BGR).download()
-        bgrR = cv2.cuda.cvtColor(cv2.cuda.resize(gpu_rectR, (960, 540)), cv2.COLOR_GRAY2BGR).download()
-        both_bgr = np.hstack([cv2.rotate(bgrL, cv2.ROTATE_180),
-                             cv2.rotate(bgrR, cv2.ROTATE_180)])
-        for y in range(0, both_bgr.shape[0], 30):
-            cv2.line(both_bgr, (0, y), (both_bgr.shape[1] - 1, y), (0, 255, 0), 1)
-        cv2.imshow("Rectified", both_bgr)
+        # Skip the entire preview pipeline, including GPU downloads, when unused.
+        if not args.depth_only:
+            # Rectified view: 960×540 each → 1920×540 side-by-side.
+            bgrL = cv2.cuda.cvtColor(cv2.cuda.resize(gpu_rectL, (960, 540)), cv2.COLOR_GRAY2BGR).download()
+            bgrR = cv2.cuda.cvtColor(cv2.cuda.resize(gpu_rectR, (960, 540)), cv2.COLOR_GRAY2BGR).download()
+            both_bgr = np.hstack([cv2.rotate(bgrL, cv2.ROTATE_180),
+                                 cv2.rotate(bgrR, cv2.ROTATE_180)])
+            for y in range(0, both_bgr.shape[0], 30):
+                cv2.line(both_bgr, (0, y), (both_bgr.shape[1] - 1, y), (0, 255, 0), 1)
+            cv2.imshow("Rectified", both_bgr)
 
         if args.matcher == "sgbm":
             first, second = (rectR, rectL) if reverse_match else (rectL, rectR)
@@ -290,7 +307,10 @@ def main():
         elif args.matcher == "sgm":
             first, second = ((gpu_rectR, gpu_rectL) if reverse_match
                              else (gpu_rectL, gpu_rectR))
-            disp_f = compute_cuda_sgm(matcher, first, second, sgm_config)
+            # Keep postprocessing on the matching grid; enlarge finished previews
+            # below and only expand numerical arrays when a capture is requested.
+            disp_f = compute_cuda_sgm(matcher, first, second, sgm_config,
+                                      full_resolution=False)
         else:
             match_first, match_second = ((gpu_rectR, gpu_rectL) if reverse_match
                                          else (gpu_rectL, gpu_rectR))
@@ -301,13 +321,21 @@ def main():
         depth_m, valid = depth_from_disparity(disp_f, Q, reverse_match)
 
         # ── Disparity visualisation (scaled to the configured search range) ─────
-        disp_vis = disparity_preview(disp_f, valid, max_disparity)
-        disp_color = cv2.applyColorMap(disp_vis, cv2.COLORMAP_TURBO)
-        disp_color[~valid] = 0
-        disp_display = cv2.rotate(cv2.resize(disp_color, (960, 540), interpolation=cv2.INTER_NEAREST), cv2.ROTATE_180)
-        cv2.imshow("Disparity", disp_display)
+        disp_vis = None
+        if not args.depth_only:
+            disp_vis = disparity_preview(disp_f, valid, max_disparity)
+            disp_color = cv2.applyColorMap(disp_vis, cv2.COLORMAP_TURBO)
+            disp_color[~valid] = 0
+            disp_display = cv2.rotate(cv2.resize(disp_color, (960, 540), interpolation=cv2.INTER_NEAREST), cv2.ROTATE_180)
+            cv2.imshow("Disparity", disp_display)
 
         depth_display = cv2.rotate(cv2.resize(colorize_depth(depth_m, valid), (960, 540), interpolation=cv2.INTER_NEAREST), cv2.ROTATE_180)
+        fps_label = "FPS: --" if fps is None else f"FPS: {fps:.1f}"
+        # Outline keeps the counter readable over every depth color.
+        cv2.putText(depth_display, fps_label, (15, 32), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8, (0, 0, 0), 4, cv2.LINE_AA)
+        cv2.putText(depth_display, fps_label, (15, 32), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8, (255, 255, 255), 2, cv2.LINE_AA)
         cv2.imshow("Depth (m)", depth_display)
 
         key = cv2.waitKey(1) & 0xFF
@@ -320,16 +348,28 @@ def main():
             if args.matcher != "sgbm":
                 rectL = gpu_rectL.download()
                 rectR = gpu_rectR.download()
+            if disp_vis is None:
+                disp_vis = disparity_preview(disp_f, valid, max_disparity)
+            # Preserve the saved arrays' original dimensions, orientation and
+            # units. Nearest-neighbour expansion also preserves invalid pixels.
+            capture_disp, capture_depth, capture_vis = disp_f, depth_m, disp_vis
+            if disp_f.shape != rectL.shape:
+                capture_size = (rectL.shape[1], rectL.shape[0])
+                capture_disp = cv2.resize(disp_f, capture_size, interpolation=cv2.INTER_NEAREST)
+                capture_depth = cv2.resize(depth_m, capture_size, interpolation=cv2.INTER_NEAREST)
+                capture_vis = cv2.resize(disp_vis, capture_size, interpolation=cv2.INTER_NEAREST)
             cv2.imwrite(os.path.join(CAPTURE_DIR, f"rectL_{ts}.png"), rectL)
             cv2.imwrite(os.path.join(CAPTURE_DIR, f"rectR_{ts}.png"), rectR)
-            cv2.imwrite(os.path.join(CAPTURE_DIR, f"depth_{ts}.png"), disp_vis)
+            cv2.imwrite(os.path.join(CAPTURE_DIR, f"depth_{ts}.png"), capture_vis)
             cv2.imwrite(os.path.join(CAPTURE_DIR, f"depth_color_{ts}.png"), depth_display)
-            np.save(os.path.join(CAPTURE_DIR, f"depth_m_{ts}.npy"), depth_m)
-            np.save(os.path.join(CAPTURE_DIR, f"disparity_px_{ts}.npy"), disp_f)
+            np.save(os.path.join(CAPTURE_DIR, f"depth_m_{ts}.npy"), capture_depth)
+            np.save(os.path.join(CAPTURE_DIR, f"disparity_px_{ts}.npy"), capture_disp)
             with open(os.path.join(CAPTURE_DIR, f"settings_{ts}.json"), "w") as f:
                 json.dump({"captured_at": captured_at.isoformat(),
                            "calibration": calib_file, "matcher": args.matcher,
+                           "depth_only": args.depth_only,
                            "matching_scale": matching_scale,
+                           "depth_processing_size": [disp_f.shape[1], disp_f.shape[0]],
                            "num_disparities_matching": matcher.getNumDisparities(),
                            "num_disparities_full_resolution": args.num_disparities,
                            "disparity_preview_max_px": max_disparity,
@@ -341,6 +381,17 @@ def main():
                            "disparity_px_units": "full-resolution pixels; nonpositive is invalid"}, f, indent=2)
             print(f"[+] Captured pair #{capture_count} → captures/")
             capture_count += 1
+
+        # Count completed loops, including camera reads, GPU work, display/event
+        # handling and any capture saving. Update twice per second for stability;
+        # the following preview shows the latest completed measurement window.
+        fps_frames += 1
+        fps_finished = time.perf_counter()
+        fps_elapsed = fps_finished - fps_started
+        if fps_elapsed >= 0.5:
+            fps = fps_frames / fps_elapsed
+            fps_frames = 0
+            fps_started = fps_finished
 
     pL.terminate()
     pR.terminate()

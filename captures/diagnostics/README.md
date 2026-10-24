@@ -7,7 +7,7 @@ of absolute depth accuracy.
 
 ## Inputs and measurements
 
-- New calibration: `stereo_params_charuco.yml`, capture `1792283796168`.
+- New calibration: `Calibration_output/stereo_params_charuco.yml`, capture `1792283796168`.
 - Previous calibration: `Calibration_output/20260620_stereo_params.yml`, capture
   `1792283838691`.
 - Matching order for both calibrations is rectified right first, left second,
@@ -48,7 +48,7 @@ baseline is 24.40%.
 ## Viewer changes and use
 
 ```bash
-python3 Camera_Jetson_PiHQCam_Stereo.py --calibration stereo_params_charuco.yml --matcher sgbm
+python3 Camera_Jetson_PiHQCam_Stereo.py --calibration Calibration_output/stereo_params_charuco.yml --matcher sgbm
 ```
 
 SGBM defaults to half resolution; use `--sgbm-scale 1` for full resolution.
